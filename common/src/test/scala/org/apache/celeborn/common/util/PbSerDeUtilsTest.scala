@@ -99,6 +99,7 @@ class PbSerDeUtilsTest extends CelebornFunSuite {
       1003,
       1004,
       1005,
+      org.apache.celeborn.common.CELEBORN_VERSION,
       diskInfos,
       userResourceConsumption)
   workerInfo1.networkLocation_$eq("/1")
@@ -110,6 +111,7 @@ class PbSerDeUtilsTest extends CelebornFunSuite {
       2003,
       2004,
       2005,
+      org.apache.celeborn.common.CELEBORN_VERSION,
       diskInfos,
       userResourceConsumption)
 
@@ -263,6 +265,7 @@ class PbSerDeUtilsTest extends CelebornFunSuite {
       assert(restoredWorkerInfoWithEmptyResource.userResourceConsumption.equals(new util.HashMap[
         UserIdentifier,
         ResourceConsumption]()))
+      assert(restoredWorkerInfo.version === org.apache.celeborn.common.CELEBORN_VERSION)
     }
   }
 

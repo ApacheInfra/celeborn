@@ -233,19 +233,21 @@ public class MetaHandler {
           fetchPort = request.getRegisterWorkerRequest().getFetchPort();
           replicatePort = request.getRegisterWorkerRequest().getReplicatePort();
           String networkLocation = request.getRegisterWorkerRequest().getNetworkLocation();
+          String version = request.getRegisterWorkerRequest().getVersion();
           int internalPort = request.getRegisterWorkerRequest().getInternalPort();
           diskInfos = MetaUtil.fromPbDiskInfos(request.getRegisterWorkerRequest().getDisksMap());
           userResourceConsumption =
               MetaUtil.fromPbUserResourceConsumption(
                   request.getRegisterWorkerRequest().getUserResourceConsumptionMap());
           LOG.debug(
-              "Handle worker register for {} {} {} {} {} {} {} {}",
+              "Handle worker register for {} {} {} {} {} {} {} {} {}",
               host,
               rpcPort,
               pushPort,
               fetchPort,
               replicatePort,
               internalPort,
+              version,
               diskInfos,
               userResourceConsumption);
           metaSystem.updateRegisterWorkerMeta(
@@ -256,6 +258,7 @@ public class MetaHandler {
               replicatePort,
               internalPort,
               networkLocation,
+              version,
               diskInfos,
               userResourceConsumption);
           break;

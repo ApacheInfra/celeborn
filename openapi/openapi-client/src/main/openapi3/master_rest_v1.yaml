@@ -844,6 +844,9 @@ components:
           type: integer
           format: int64
           description: The start time of the worker state.
+        version:
+          type: string
+          description: The version of the worker.
       required:
         - host
         - rpcPort

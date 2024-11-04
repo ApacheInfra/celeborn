@@ -20,6 +20,8 @@ package org.apache.celeborn.service.deploy.worker.http.api.v1
 import java.util.Collections
 import javax.servlet.http.HttpServletResponse
 
+import scala.collection.JavaConverters._
+
 import org.apache.celeborn.rest.v1.master._
 import org.apache.celeborn.rest.v1.master.invoker._
 import org.apache.celeborn.rest.v1.model.{ExcludeWorkerRequest, RemoveWorkersUnavailableInfoRequest, SendWorkerEventRequest, WorkerId}
@@ -71,6 +73,8 @@ class ApiV1OpenapiClientSuite extends ApiV1WorkerOpenapiClientSuite {
     val api = new WorkerApi(masterApiClient)
     var workersResponse = api.getWorkers
     assert(!workersResponse.getWorkers.isEmpty)
+    assert(workersResponse.getWorkers.asScala.forall(
+      _.getVersion === org.apache.celeborn.common.CELEBORN_VERSION))
     assert(workersResponse.getLostWorkers.isEmpty)
     assert(workersResponse.getExcludedWorkers.isEmpty)
     assert(workersResponse.getManualExcludedWorkers.isEmpty)

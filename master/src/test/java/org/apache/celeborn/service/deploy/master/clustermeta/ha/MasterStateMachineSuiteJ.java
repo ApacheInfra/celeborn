@@ -426,6 +426,7 @@ public class MasterStateMachineSuiteJ extends RatisBaseSuiteJ {
           4000 + i,
           5000 + i,
           "networkLocation1",
+          null,
           disks1,
           userResourceConsumption1,
           getNewReqeustId());
@@ -461,6 +462,7 @@ public class MasterStateMachineSuiteJ extends RatisBaseSuiteJ {
           4100 + i,
           5100 + i,
           "networkLocation1",
+          null,
           disks1,
           userResourceConsumption1,
           getNewReqeustId());
@@ -503,6 +505,7 @@ public class MasterStateMachineSuiteJ extends RatisBaseSuiteJ {
           4180 + i,
           5180 + i,
           "networkLocation1",
+          null,
           disks1,
           userResourceConsumption1,
           getNewReqeustId());

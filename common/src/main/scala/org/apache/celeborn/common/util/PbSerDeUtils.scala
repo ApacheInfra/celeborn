@@ -266,6 +266,7 @@ object PbSerDeUtils {
       pbWorkerInfo.getFetchPort,
       pbWorkerInfo.getReplicatePort,
       pbWorkerInfo.getInternalPort,
+      pbWorkerInfo.getVersion,
       disks,
       userResourceConsumption)
     if (masterPersistWorkerNetworkLocation) {
@@ -285,6 +286,7 @@ object PbSerDeUtils {
       .setPushPort(workerInfo.pushPort)
       .setReplicatePort(workerInfo.replicatePort)
       .setInternalPort(workerInfo.internalPort)
+      .setVersion(workerInfo.version)
     if (masterPersistWorkerNetworkLocation) {
       builder.setNetworkLocation(workerInfo.networkLocation)
     }

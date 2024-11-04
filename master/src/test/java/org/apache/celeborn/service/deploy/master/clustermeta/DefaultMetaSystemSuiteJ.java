@@ -131,6 +131,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT1,
         INTERNALPORT1,
         NETWORK_LOCATION1,
+        null,
         disks1,
         userResourceConsumption1,
         getNewReqeustId());
@@ -142,6 +143,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT2,
         INTERNALPORT2,
         NETWORK_LOCATION2,
+        null,
         disks2,
         userResourceConsumption2,
         getNewReqeustId());
@@ -153,6 +155,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT3,
         INTERNALPORT3,
         NETWORK_LOCATION3,
+        null,
         disks3,
         userResourceConsumption3,
         getNewReqeustId());
@@ -191,6 +194,7 @@ public class DefaultMetaSystemSuiteJ {
         workerInfo1.replicatePort(),
         workerInfo1.internalPort(),
         workerInfo1.networkLocation(),
+        workerInfo1.version(),
         workerInfo1.diskInfos(),
         workerInfo1.userResourceConsumption(),
         getNewReqeustId());
@@ -202,6 +206,7 @@ public class DefaultMetaSystemSuiteJ {
         workerInfo2.replicatePort(),
         workerInfo2.internalPort(),
         workerInfo2.networkLocation(),
+        workerInfo2.version(),
         workerInfo2.diskInfos(),
         workerInfo2.userResourceConsumption(),
         getNewReqeustId());
@@ -225,6 +230,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT1,
         INTERNALPORT1,
         NETWORK_LOCATION1,
+        null,
         disks1,
         userResourceConsumption1,
         getNewReqeustId());
@@ -236,6 +242,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT2,
         INTERNALPORT2,
         NETWORK_LOCATION2,
+        null,
         disks2,
         userResourceConsumption2,
         getNewReqeustId());
@@ -247,6 +254,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT3,
         INTERNALPORT3,
         NETWORK_LOCATION3,
+        null,
         disks3,
         userResourceConsumption3,
         getNewReqeustId());
@@ -270,6 +278,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT1,
         INTERNALPORT1,
         NETWORK_LOCATION1,
+        null,
         disks1,
         userResourceConsumption1,
         getNewReqeustId());
@@ -281,6 +290,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT2,
         INTERNALPORT2,
         NETWORK_LOCATION2,
+        null,
         disks2,
         userResourceConsumption2,
         getNewReqeustId());
@@ -292,6 +302,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT3,
         INTERNALPORT3,
         NETWORK_LOCATION3,
+        null,
         disks3,
         userResourceConsumption3,
         getNewReqeustId());
@@ -350,6 +361,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT1,
         INTERNALPORT1,
         NETWORK_LOCATION1,
+        null,
         disks1,
         userResourceConsumption1,
         getNewReqeustId());
@@ -361,6 +373,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT2,
         INTERNALPORT2,
         NETWORK_LOCATION2,
+        null,
         disks2,
         userResourceConsumption2,
         getNewReqeustId());
@@ -372,6 +385,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT3,
         INTERNALPORT3,
         NETWORK_LOCATION3,
+        null,
         disks3,
         userResourceConsumption3,
         getNewReqeustId());
@@ -416,6 +430,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT1,
         INTERNALPORT1,
         NETWORK_LOCATION1,
+        null,
         disks1,
         userResourceConsumption1,
         getNewReqeustId());
@@ -427,6 +442,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT2,
         INTERNALPORT2,
         NETWORK_LOCATION2,
+        null,
         disks2,
         userResourceConsumption2,
         getNewReqeustId());
@@ -438,6 +454,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT3,
         INTERNALPORT3,
         NETWORK_LOCATION3,
+        null,
         disks3,
         userResourceConsumption3,
         getNewReqeustId());
@@ -490,6 +507,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT1,
         INTERNALPORT1,
         NETWORK_LOCATION1,
+        null,
         disks1,
         userResourceConsumption1,
         getNewReqeustId());
@@ -501,6 +519,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT2,
         INTERNALPORT2,
         NETWORK_LOCATION2,
+        null,
         disks2,
         userResourceConsumption2,
         getNewReqeustId());
@@ -512,6 +531,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT3,
         INTERNALPORT3,
         NETWORK_LOCATION3,
+        null,
         disks3,
         userResourceConsumption3,
         getNewReqeustId());
@@ -562,6 +582,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT1,
         INTERNALPORT1,
         NETWORK_LOCATION1,
+        null,
         disks1,
         userResourceConsumption1,
         getNewReqeustId());
@@ -573,6 +594,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT2,
         INTERNALPORT2,
         NETWORK_LOCATION2,
+        null,
         disks2,
         userResourceConsumption2,
         getNewReqeustId());
@@ -584,6 +606,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT3,
         INTERNALPORT3,
         NETWORK_LOCATION3,
+        null,
         disks3,
         userResourceConsumption3,
         getNewReqeustId());
@@ -657,6 +680,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT1,
         INTERNALPORT1,
         NETWORK_LOCATION1,
+        null,
         new HashMap<>(),
         userResourceConsumption1,
         getNewReqeustId());
@@ -668,6 +692,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT2,
         INTERNALPORT2,
         NETWORK_LOCATION2,
+        null,
         new HashMap<>(),
         userResourceConsumption2,
         getNewReqeustId());
@@ -679,6 +704,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT3,
         INTERNALPORT3,
         NETWORK_LOCATION3,
+        null,
         new HashMap<>(),
         userResourceConsumption3,
         getNewReqeustId());
@@ -758,6 +784,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT1,
         INTERNALPORT1,
         NETWORK_LOCATION1,
+        null,
         disks1,
         userResourceConsumption1,
         getNewReqeustId());
@@ -769,6 +796,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT2,
         INTERNALPORT2,
         NETWORK_LOCATION2,
+        null,
         disks2,
         userResourceConsumption2,
         getNewReqeustId());
@@ -780,6 +808,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT3,
         INTERNALPORT3,
         NETWORK_LOCATION3,
+        null,
         disks3,
         userResourceConsumption3,
         getNewReqeustId());
@@ -857,6 +886,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT1,
         INTERNALPORT1,
         NETWORK_LOCATION1,
+        null,
         disks1,
         userResourceConsumption1,
         getNewReqeustId());
@@ -868,6 +898,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT2,
         INTERNALPORT2,
         NETWORK_LOCATION2,
+        null,
         disks2,
         userResourceConsumption2,
         getNewReqeustId());
@@ -879,6 +910,7 @@ public class DefaultMetaSystemSuiteJ {
         REPLICATEPORT3,
         INTERNALPORT3,
         NETWORK_LOCATION3,
+        null,
         disks3,
         userResourceConsumption3,
         getNewReqeustId());

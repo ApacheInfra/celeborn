@@ -429,6 +429,12 @@ components:
         isDecommissioning:
           type: boolean
           description: The decommission status of the worker.
+        version:
+          type: string
+          description: The version of the worker.
+        compileInfo:
+          type: string
+          description: The compile info of the worker.
       required:
         - host
         - rpcPort
@@ -528,6 +534,9 @@ components:
           type: integer
           format: int64
           description: The start time of the worker state.
+        version:
+          type: string
+          description: The version of the worker.
       required:
         - host
         - rpcPort

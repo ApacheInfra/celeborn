@@ -298,6 +298,7 @@ private[celeborn] class Master(
     if (!threadsStarted.compareAndSet(false, true)) {
       return
     }
+    logInfo(s"Running Celeborn version ${org.apache.celeborn.common.CELEBORN_VERSION}")
     if (authEnabled) {
       sendApplicationMetaExecutor = ThreadUtils.newDaemonFixedThreadPool(
         sendApplicationMetaThreads,
@@ -430,6 +431,7 @@ private[celeborn] class Master(
       val replicatePort = pbRegisterWorker.getReplicatePort
       val internalPort = pbRegisterWorker.getInternalPort
       val networkLocation = pbRegisterWorker.getNetworkLocation
+      val version = pbRegisterWorker.getVersion
       val disks = pbRegisterWorker.getDisksList.asScala
         .map { pbDiskInfo => pbDiskInfo.getMountPoint -> PbSerDeUtils.fromPbDiskInfo(pbDiskInfo) }
         .toMap.asJava
@@ -437,7 +439,7 @@ private[celeborn] class Master(
         PbSerDeUtils.fromPbUserResourceConsumption(pbRegisterWorker.getUserResourceConsumptionMap)
 
       logDebug(s"Received RegisterWorker request $requestId, $host:$pushPort:$replicatePort" +
-        s" $disks.")
+        s" $version $disks.")
       executeWithLeaderChecker(
         context,
         handleRegisterWorker(
@@ -449,6 +451,7 @@ private[celeborn] class Master(
           replicatePort,
           internalPort,
           networkLocation,
+          version,
           disks,
           userResourceConsumption,
           requestId))
@@ -754,10 +757,7 @@ private[celeborn] class Master(
       rpcPort,
       pushPort,
       fetchPort,
-      replicatePort,
-      -1,
-      new util.HashMap[String, DiskInfo](),
-      JavaUtils.newConcurrentHashMap[UserIdentifier, ResourceConsumption]())
+      replicatePort)
     val worker: WorkerInfo = statusSystem.workersMap.get(targetWorker.toUniqueId())
     if (worker == null) {
       logWarning(s"Unknown worker $host:$rpcPort:$pushPort:$fetchPort:$replicatePort" +
@@ -779,6 +779,7 @@ private[celeborn] class Master(
       replicatePort: Int,
       internalPort: Int,
       networkLocation: String,
+      version: String,
       disks: util.Map[String, DiskInfo],
       userResourceConsumption: util.Map[UserIdentifier, ResourceConsumption],
       requestId: String): Unit = {
@@ -790,6 +791,7 @@ private[celeborn] class Master(
         fetchPort,
         replicatePort,
         internalPort,
+        version,
         disks,
         userResourceConsumption)
 
@@ -814,6 +816,7 @@ private[celeborn] class Master(
         replicatePort,
         internalPort,
         networkLocation,
+        version,
         disks,
         userResourceConsumption,
         requestId)
@@ -830,6 +833,7 @@ private[celeborn] class Master(
         replicatePort,
         internalPort,
         networkLocation,
+        version,
         disks,
         userResourceConsumption,
         requestId)
@@ -843,6 +847,7 @@ private[celeborn] class Master(
         replicatePort,
         internalPort,
         networkLocation,
+        version,
         disks,
         userResourceConsumption,
         requestId)

@@ -74,6 +74,7 @@ class ApiV1WorkerResourceSuite extends ApiV1BaseResourceSuite with MiniClusterFe
     assert(workerData.getIsRegistered)
     assert(!workerData.getIsShutdown)
     assert(!workerData.getIsDecommissioning)
+    assert(workerData.getVersion === org.apache.celeborn.common.CELEBORN_VERSION)
 
     response = webTarget.path("workers/unavailable_peers").request(MediaType.APPLICATION_JSON).get()
     assert(HttpServletResponse.SC_OK == response.getStatus)

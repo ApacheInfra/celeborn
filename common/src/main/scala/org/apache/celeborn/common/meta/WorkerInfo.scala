@@ -39,10 +39,12 @@ class WorkerInfo(
     val fetchPort: Int,
     val replicatePort: Int,
     val internalPort: Int,
+    _version: String,
     _diskInfos: util.Map[String, DiskInfo],
     _userResourceConsumption: util.Map[UserIdentifier, ResourceConsumption]) extends Serializable
   with Logging {
   var networkLocation = NetworkTopology.DEFAULT_RACK
+  val version = Option(_version).getOrElse(WorkerInfo.UNKNOWN_VERSION)
   var lastHeartbeat: Long = 0
   var workerStatus = WorkerStatus.normalWorkerStatus()
   val diskInfos =
@@ -67,6 +69,7 @@ class WorkerInfo(
       fetchPort,
       replicatePort,
       -1,
+      WorkerInfo.UNKNOWN_VERSION,
       new util.HashMap[String, DiskInfo](),
       new util.HashMap[UserIdentifier, ResourceConsumption]())
   }
@@ -85,8 +88,30 @@ class WorkerInfo(
       fetchPort,
       replicatePort,
       internalPort,
+      WorkerInfo.UNKNOWN_VERSION,
       new util.HashMap[String, DiskInfo](),
       new util.HashMap[UserIdentifier, ResourceConsumption]())
+  }
+
+  def this(
+      host: String,
+      rpcPort: Int,
+      pushPort: Int,
+      fetchPort: Int,
+      replicatePort: Int,
+      internalPort: Int,
+      diskInfos: util.Map[String, DiskInfo],
+      userResourceConsumption: util.Map[UserIdentifier, ResourceConsumption]) = {
+    this(
+      host,
+      rpcPort,
+      pushPort,
+      fetchPort,
+      replicatePort,
+      internalPort,
+      WorkerInfo.UNKNOWN_VERSION,
+      diskInfos,
+      userResourceConsumption)
   }
 
   def isActive: Boolean = {
@@ -316,4 +341,6 @@ object WorkerInfo {
       Utils.parseColonSeparatedHostPorts(id, portsNum = 4)
     new WorkerInfo(host, rpcPort.toInt, pushPort.toInt, fetchPort.toInt, replicatePort.toInt)
   }
+
+  val UNKNOWN_VERSION = "<UNKNOWN>"
 }

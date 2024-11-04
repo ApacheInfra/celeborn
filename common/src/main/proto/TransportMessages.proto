@@ -180,6 +180,7 @@ message PbWorkerInfo {
   map<string, PbResourceConsumption> userResourceConsumption = 7;
   int32 internalPort = 8;
   string networkLocation = 9;
+  string version = 10;
 }
 
 message PbFileGroup {
@@ -198,6 +199,7 @@ message PbRegisterWorker {
   map<string, PbResourceConsumption> userResourceConsumption = 8;
   int32 internalPort = 10;
   string networkLocation = 11;
+  string version = 12;
 }
 
 message PbHeartbeatFromWorker {

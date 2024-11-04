@@ -62,6 +62,7 @@ object ApiUtils {
       .workerRef(Option(workerInfo.endpoint).map(_.toString).orNull)
       .workerState(workerInfo.workerStatus.getState.toString)
       .workerStateStartTime(workerInfo.workerStatus.getStateStartTime)
+      .version(workerInfo.version)
   }
 
   def workerInfoResponse(
@@ -91,6 +92,8 @@ object ApiUtils {
         isShutdown && (
           currentStatus.getState == State.InDecommission ||
             currentStatus.getState == State.InDecommissionThenIdle))
+      .version(org.apache.celeborn.common.CELEBORN_VERSION)
+      .compileInfo(org.apache.celeborn.common.CELEBORN_COMPILE_INFO)
   }
 
   def toWorkerInfo(workerId: WorkerId): WorkerInfo = {

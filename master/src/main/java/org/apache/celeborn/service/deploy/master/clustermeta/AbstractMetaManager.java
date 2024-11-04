@@ -266,6 +266,7 @@ public abstract class AbstractMetaManager implements IMetadataHandler {
       int replicatePort,
       int internalPort,
       String networkLocation,
+      String version,
       Map<String, DiskInfo> disks,
       Map<UserIdentifier, ResourceConsumption> userResourceConsumption) {
     WorkerInfo workerInfo =
@@ -276,6 +277,7 @@ public abstract class AbstractMetaManager implements IMetadataHandler {
             fetchPort,
             replicatePort,
             internalPort,
+            version,
             disks,
             userResourceConsumption);
     workerInfo.lastHeartbeat_$eq(System.currentTimeMillis());

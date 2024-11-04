@@ -142,6 +142,7 @@ public class SingleMasterMetaManager extends AbstractMetaManager {
       int replicatePort,
       int internalPort,
       String networkLocation,
+      String version,
       Map<String, DiskInfo> disks,
       Map<UserIdentifier, ResourceConsumption> userResourceConsumption,
       String requestId) {
@@ -153,6 +154,7 @@ public class SingleMasterMetaManager extends AbstractMetaManager {
         replicatePort,
         internalPort,
         networkLocation,
+        version,
         disks,
         userResourceConsumption);
   }

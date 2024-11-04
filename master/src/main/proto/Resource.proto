@@ -186,6 +186,7 @@ message RegisterWorkerRequest {
   map<string, ResourceConsumption> userResourceConsumption = 7;
   required int32 internalPort = 8;
   optional string networkLocation = 9;
+  optional string version = 10;
 }
 
 message ReportWorkerUnavailableRequest {

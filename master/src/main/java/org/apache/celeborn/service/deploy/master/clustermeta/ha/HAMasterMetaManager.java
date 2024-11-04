@@ -19,6 +19,7 @@ package org.apache.celeborn.service.deploy.master.clustermeta.ha;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -308,6 +309,7 @@ public class HAMasterMetaManager extends AbstractMetaManager {
       int replicatePort,
       int internalPort,
       String networkLocation,
+      String version,
       Map<String, DiskInfo> disks,
       Map<UserIdentifier, ResourceConsumption> userResourceConsumption,
       String requestId) {
@@ -325,6 +327,7 @@ public class HAMasterMetaManager extends AbstractMetaManager {
                       .setReplicatePort(replicatePort)
                       .setInternalPort(internalPort)
                       .setNetworkLocation(networkLocation)
+                      .setVersion(Optional.ofNullable(version).orElse(WorkerInfo.UNKNOWN_VERSION()))
                       .putAllDisks(MetaUtil.toPbDiskInfos(disks))
                       .putAllUserResourceConsumption(
                           MetaUtil.toPbUserResourceConsumption(userResourceConsumption))
