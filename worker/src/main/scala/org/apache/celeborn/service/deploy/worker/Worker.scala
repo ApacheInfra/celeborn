@@ -702,23 +702,27 @@ private[celeborn] class Worker(
       resourceConsumptionLabel += (resourceConsumptionSource.applicationLabel -> applicationId)
     resourceConsumptionSource.addGauge(
       ResourceConsumptionSource.DISK_FILE_COUNT,
-      resourceConsumptionLabel) { () =>
+      resourceConsumptionLabel,
+      true) { () =>
       computeResourceConsumption(userIdentifier, resourceConsumption).diskFileCount
     }
     resourceConsumptionSource.addGauge(
       ResourceConsumptionSource.DISK_BYTES_WRITTEN,
-      resourceConsumptionLabel) { () =>
+      resourceConsumptionLabel,
+      true) { () =>
       computeResourceConsumption(userIdentifier, resourceConsumption).diskBytesWritten
     }
     if (hasHDFSStorage) {
       resourceConsumptionSource.addGauge(
         ResourceConsumptionSource.HDFS_FILE_COUNT,
-        resourceConsumptionLabel) { () =>
+        resourceConsumptionLabel,
+        true) { () =>
         computeResourceConsumption(userIdentifier, resourceConsumption).hdfsFileCount
       }
       resourceConsumptionSource.addGauge(
         ResourceConsumptionSource.HDFS_BYTES_WRITTEN,
-        resourceConsumptionLabel) { () =>
+        resourceConsumptionLabel,
+        true) { () =>
         computeResourceConsumption(userIdentifier, resourceConsumption).hdfsBytesWritten
       }
     }

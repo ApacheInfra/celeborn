@@ -107,7 +107,7 @@ class WorkerSource(conf: CelebornConf) extends AbstractSource(conf, Role.WORKER)
     val applicationIds = appActiveConnections.get(client.getChannel.id().asLongText())
     val applicationId = Utils.splitShuffleKey(shuffleKey)._1
     if (applicationIds != null && !applicationIds.contains(applicationId)) {
-      addCounter(ACTIVE_CONNECTION_COUNT, Map(applicationLabel -> applicationId))
+      addCounter(ACTIVE_CONNECTION_COUNT, Map(applicationLabel -> applicationId), true)
       incCounter(ACTIVE_CONNECTION_COUNT, 1, Map(applicationLabel -> applicationId))
       applicationIds.add(applicationId)
     }

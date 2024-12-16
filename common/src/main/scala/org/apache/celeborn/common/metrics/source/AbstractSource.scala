@@ -34,10 +34,18 @@ import org.apache.celeborn.common.util.{JavaUtils, ThreadUtils, Utils}
 // Can Remove this if celeborn don't support scala211 in future
 import org.apache.celeborn.common.util.FunctionConverter._
 
-case class NamedCounter(name: String, counter: Counter, labels: Map[String, String])
+case class NamedCounter(
+    name: String,
+    counter: Counter,
+    labels: Map[String, String],
+    isApp: Boolean = false)
   extends MetricLabels
 
-case class NamedGauge[T](name: String, gauge: Gauge[T], labels: Map[String, String])
+case class NamedGauge[T](
+    name: String,
+    gauge: Gauge[T],
+    labels: Map[String, String],
+    isApp: Boolean = false)
   extends MetricLabels
 
 case class NamedMeter(name: String, meter: Meter, labels: Map[String, String])
@@ -76,6 +84,8 @@ abstract class AbstractSource(conf: CelebornConf, role: String)
   val staticLabels: Map[String, String] = conf.metricsExtraLabels + roleLabel ++ instanceLabel
   val staticLabelsString: String = MetricLabels.labelString(staticLabels)
 
+  val metricsAppEnabled: Boolean = conf.metricsAppEnabled
+
   val applicationLabel = "applicationId"
 
   val timerMetrics: ConcurrentLinkedQueue[String] = new ConcurrentLinkedQueue[String]()
@@ -101,16 +111,26 @@ abstract class AbstractSource(conf: CelebornConf, role: String)
   def addGauge[T](
       name: String,
       labels: Map[String, String],
-      gauge: Gauge[T]): Unit = {
-    // filter out non-number type gauges
-    if (gauge.getValue.isInstanceOf[Number]) {
-      namedGauges.putIfAbsent(
-        metricNameWithCustomizedLabels(name, labels),
-        NamedGauge(name, gauge, labels ++ staticLabels))
-    } else {
-      logWarning(
-        s"Add gauge $name failed, the value type ${gauge.getValue.getClass} is not a number")
+      gauge: Gauge[T],
+      isAppMetrics: Boolean): Unit = {
+    if (metricsAppEnabled || (!metricsAppEnabled && !isAppMetrics)) {
+      // filter out non-number type gauges
+      if (gauge.getValue.isInstanceOf[Number]) {
+        namedGauges.putIfAbsent(
+          metricNameWithCustomizedLabels(name, labels),
+          NamedGauge(name, gauge, labels ++ staticLabels, isAppMetrics))
+      } else {
+        logWarning(
+          s"Add gauge $name failed, the value type ${gauge.getValue.getClass} is not a number")
+      }
     }
+  }
+
+  def addGauge[T](
+      name: String,
+      labels: Map[String, String],
+      gauge: Gauge[T]): Unit = {
+    addGauge(name, labels, gauge, false)
   }
 
   def addGauge[T](
@@ -120,11 +140,15 @@ abstract class AbstractSource(conf: CelebornConf, role: String)
     addGauge(name, labels.asScala.toMap, gauge)
   }
 
-  def addGauge[T](name: String, labels: Map[String, String] = Map.empty)(f: () => T): Unit = {
+  def addGauge[T](
+      name: String,
+      labels: Map[String, String] = Map.empty,
+      isAppMetrics: Boolean = false)(f: () => T): Unit = {
     addGauge(
       name,
       labels,
-      metricRegistry.gauge(metricNameWithCustomizedLabels(name, labels), new GaugeSupplier[T](f)))
+      metricRegistry.gauge(metricNameWithCustomizedLabels(name, labels), new GaugeSupplier[T](f)),
+      isAppMetrics)
   }
 
   def addGauge[T](name: String, gauge: Gauge[T]): Unit = {
@@ -176,11 +200,17 @@ abstract class AbstractSource(conf: CelebornConf, role: String)
 
   def addCounter(name: String): Unit = addCounter(name, Map.empty[String, String])
 
-  def addCounter(name: String, labels: Map[String, String]): Unit = {
-    val metricNameWithLabel = metricNameWithCustomizedLabels(name, labels)
-    namedCounters.putIfAbsent(
-      metricNameWithLabel,
-      NamedCounter(name, metricRegistry.counter(metricNameWithLabel), labels ++ staticLabels))
+  def addCounter(name: String, labels: Map[String, String], isAppMetrics: Boolean = false): Unit = {
+    if (metricsAppEnabled || (!metricsAppEnabled && !isAppMetrics)) {
+      val metricNameWithLabel = metricNameWithCustomizedLabels(name, labels)
+      namedCounters.putIfAbsent(
+        metricNameWithLabel,
+        NamedCounter(
+          name,
+          metricRegistry.counter(metricNameWithLabel),
+          labels ++ staticLabels,
+          isAppMetrics))
+    }
   }
 
   def counters(): List[NamedCounter] = {

@@ -879,6 +879,7 @@ class CelebornConf(loadDefaults: Boolean) extends Cloneable with Logging with Se
   def metricsWorkerForceAppendPauseSpentTimeThreshold: Int =
     get(METRICS_WORKER_PAUSE_SPENT_TIME_FORCE_APPEND_THRESHOLD)
   def metricsJsonPrettyEnabled: Boolean = get(METRICS_JSON_PRETTY_ENABLED)
+  def metricsAppEnabled: Boolean = get(METRICS_APP_ENABLED)
 
   // //////////////////////////////////////////////////////
   //                      Quota                         //
@@ -5337,6 +5338,14 @@ object CelebornConf extends Logging {
       .categories("metrics")
       .doc("When true, view metrics in json pretty format")
       .version("0.4.0")
+      .booleanConf
+      .createWithDefault(true)
+
+  val METRICS_APP_ENABLED: ConfigEntry[Boolean] =
+    buildConf("celeborn.metrics.application.enabled")
+      .categories("metrics")
+      .doc("When false, the metrics of application won't return to reduce the num of metrics.")
+      .version("0.6.0")
       .booleanConf
       .createWithDefault(true)
 
