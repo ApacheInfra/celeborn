@@ -22,7 +22,7 @@ license: |
 | celeborn.client.application.heartbeatInterval | 10s | false | Interval for client to send heartbeat message to master. | 0.3.0 | celeborn.application.heartbeatInterval | 
 | celeborn.client.application.unregister.enabled | true | false | When true, Celeborn client will inform celeborn master the application is already shutdown during client exit, this allows the cluster to release resources immediately, resulting in resource savings. | 0.3.2 |  | 
 | celeborn.client.application.uuidSuffix.enabled | false | false | Whether to add UUID suffix for application id for unique. When `true`, add UUID suffix for unique application id. Currently, this only applies to Spark and MR. | 0.6.0 |  | 
-| celeborn.client.callLifecycleManager.retryWait | 1s | false | Wait time before next retry if call LifecycleManager failed. | 0.6.0 | celeborn.shuffle.callLifecycleManager.retryWait | 
+| celeborn.client.callLifecycleManager.maxRetries | 3 | false | Max retry times for client to reserve slots. | 0.6.0 | celeborn.callLifecycleManager.maxRetries | 
 | celeborn.client.chunk.prefetch.enabled | false | false | Whether to enable chunk prefetch when creating CelebornInputStream. | 0.6.0 |  | 
 | celeborn.client.closeIdleConnections | true | false | Whether client will close idle connections. | 0.3.0 |  | 
 | celeborn.client.commitFiles.ignoreExcludedWorker | false | false | When true, LifecycleManager will skip workers which are in the excluded list. | 0.3.0 |  | 
