@@ -161,13 +161,13 @@ abstract class RpcEnv(config: RpcEnvConfig) {
       } catch {
         case e: RpcTimeoutException =>
           if (numRetries > 0) {
+            val random = new Random
+            val retryWaitMs = random.nextInt(waitTimeBound)
             try {
-              val random = new Random
-              val retryWaitMs = random.nextInt(waitTimeBound)
               TimeUnit.MILLISECONDS.sleep(retryWaitMs)
             } catch {
               case _: InterruptedException =>
-                numRetries = 0
+                throw e
             }
           } else {
             throw e
