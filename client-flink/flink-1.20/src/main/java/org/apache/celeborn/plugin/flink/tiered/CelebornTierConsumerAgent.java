@@ -57,7 +57,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.celeborn.common.CelebornConf;
-import org.apache.celeborn.common.exception.CelebornIOException;
+import org.apache.celeborn.common.exception.DriverChangedException;
 import org.apache.celeborn.common.exception.PartitionUnRetryAbleException;
 import org.apache.celeborn.common.identity.UserIdentifier;
 import org.apache.celeborn.plugin.flink.RemoteShuffleResource;
@@ -332,7 +332,7 @@ public class CelebornTierConsumerAgent implements TierConsumerAgent {
               conf,
               new UserIdentifier("default", "default"),
               bufferSizeBytes);
-    } catch (CelebornIOException e) {
+    } catch (DriverChangedException e) {
       throw new RuntimeException(e.getMessage());
     }
   }
