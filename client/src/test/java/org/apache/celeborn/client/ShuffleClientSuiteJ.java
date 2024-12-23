@@ -242,12 +242,18 @@ public class ShuffleClientSuiteJ {
     shuffleClient =
         new ShuffleClientImpl(TEST_APPLICATION_ID, conf, new UserIdentifier("mock", "mock"));
 
-    primaryLocation.setPeer(replicaLocation);
     when(endpointRef.askSync(any(), any(), any()))
         .thenAnswer(
             t ->
                 RegisterShuffleResponse$.MODULE$.apply(
                     statusCode, new PartitionLocation[] {primaryLocation}));
+
+    when(endpointRef.askSync(any(), any(), any(Integer.class), any()))
+        .thenAnswer(
+            t ->
+                RegisterShuffleResponse$.MODULE$.apply(
+                    statusCode, new PartitionLocation[] {primaryLocation}));
+    primaryLocation.setPeer(replicaLocation);
 
     shuffleClient.setupLifecycleManagerRef(endpointRef);
 
