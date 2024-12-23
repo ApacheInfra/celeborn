@@ -92,7 +92,7 @@ public class FlinkShuffleClientImpl extends ShuffleClientImpl {
       long driverTimestamp,
       CelebornConf conf,
       UserIdentifier userIdentifier)
-      throws CelebornIOException {
+      throws DriverChangedException {
     return get(
         appUniqueId,
         driverHost,
@@ -111,7 +111,7 @@ public class FlinkShuffleClientImpl extends ShuffleClientImpl {
       CelebornConf conf,
       UserIdentifier userIdentifier,
       int bufferSizeBytes)
-      throws CelebornIOException {
+      throws DriverChangedException {
     if (null == _instance || !initialized || _instance.driverTimestamp < driverTimestamp) {
       synchronized (FlinkShuffleClientImpl.class) {
         if (null == _instance) {
@@ -169,8 +169,7 @@ public class FlinkShuffleClientImpl extends ShuffleClientImpl {
       long driverTimestamp,
       CelebornConf conf,
       UserIdentifier userIdentifier,
-      int bufferSizeBytes)
-      throws CelebornIOException {
+      int bufferSizeBytes) {
     super(appUniqueId, conf, userIdentifier);
     this.bufferSizeBytes = bufferSizeBytes;
     String module = TransportModuleConstants.DATA_MODULE;
@@ -191,7 +190,7 @@ public class FlinkShuffleClientImpl extends ShuffleClientImpl {
   }
 
   @Override
-  public void setupLifecycleManagerRef(String host, int port) throws CelebornIOException {
+  public void setupLifecycleManagerRef(String host, int port) {
     super.setupLifecycleManagerRef(host, port);
     initializeTransportClientFactory();
   }

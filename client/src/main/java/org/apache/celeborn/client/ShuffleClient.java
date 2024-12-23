@@ -67,8 +67,7 @@ public abstract class ShuffleClient {
       String driverHost,
       int port,
       CelebornConf conf,
-      UserIdentifier userIdentifier)
-      throws CelebornIOException {
+      UserIdentifier userIdentifier) {
     return ShuffleClient.get(appUniqueId, driverHost, port, conf, userIdentifier, null);
   }
 
@@ -78,8 +77,7 @@ public abstract class ShuffleClient {
       int port,
       CelebornConf conf,
       UserIdentifier userIdentifier,
-      byte[] extension)
-      throws CelebornIOException {
+      byte[] extension) {
     if (null == _instance || !initialized) {
       synchronized (ShuffleClient.class) {
         if (null == _instance) {
@@ -139,7 +137,7 @@ public abstract class ShuffleClient {
         String.format("%.2f", (localReadCount * 1.0d / totalReadCount) * 100));
   }
 
-  public abstract void setupLifecycleManagerRef(String host, int port) throws CelebornIOException;
+  public abstract void setupLifecycleManagerRef(String host, int port);
 
   public abstract void setupLifecycleManagerRef(RpcEndpointRef endpointRef);
 

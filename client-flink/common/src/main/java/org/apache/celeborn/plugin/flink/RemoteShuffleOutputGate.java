@@ -30,7 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.celeborn.common.CelebornConf;
-import org.apache.celeborn.common.exception.CelebornIOException;
+import org.apache.celeborn.common.exception.DriverChangedException;
 import org.apache.celeborn.common.identity.UserIdentifier;
 import org.apache.celeborn.common.protocol.PartitionLocation;
 import org.apache.celeborn.plugin.flink.buffer.BufferHeader;
@@ -201,7 +201,7 @@ public class RemoteShuffleOutputGate {
           lifecycleManagerTimestamp,
           celebornConf,
           userIdentifier);
-    } catch (CelebornIOException e) {
+    } catch (DriverChangedException e) {
       // would generate a new attempt to retry output gate
       throw new RuntimeException(e.getMessage());
     }

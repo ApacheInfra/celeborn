@@ -40,6 +40,7 @@ import org.apache.celeborn.client.read.CelebornInputStream;
 import org.apache.celeborn.client.read.MetricsCallback;
 import org.apache.celeborn.common.CelebornConf;
 import org.apache.celeborn.common.exception.CelebornIOException;
+import org.apache.celeborn.common.exception.CelebornRuntimeException;
 import org.apache.celeborn.common.identity.UserIdentifier;
 import org.apache.celeborn.common.network.TransportContext;
 import org.apache.celeborn.common.network.buffer.NettyManagedBuffer;
@@ -1711,8 +1712,6 @@ public class ShuffleClientImpl extends ShuffleClient {
       if (response.status() != StatusCode.SUCCESS) {
         throw new CelebornIOException("MapperEnd failed! StatusCode: " + response.status());
       }
-    } catch (Exception e) {
-      throw new CelebornIOException("MapperEnd failed!", e);
     } finally {
       pushStates.remove(mapKey);
     }
@@ -1924,24 +1923,18 @@ public class ShuffleClientImpl extends ShuffleClient {
   }
 
   @Override
-  public void setupLifecycleManagerRef(String host, int port) throws CelebornIOException {
+  public void setupLifecycleManagerRef(String host, int port) {
     logger.info("setupLifecycleManagerRef: host = {}, port = {}", host, port);
-    try {
-      lifecycleManagerRef =
-          callLifecycleManagerWithTimeoutRetry(
-              () ->
-                  rpcEnv.setupEndpointRef(
-                      new RpcAddress(host, port), RpcNameConstants.LIFECYCLE_MANAGER_EP),
-              "setupLifecycleManagerRef");
-    } catch (Exception e) {
-      logger.error("setupLifecycleManagerRef failed, host = {}, port = {}", host, port);
-      throw new CelebornIOException("setupLifecycleManagerRef failed", e);
-    }
+    lifecycleManagerRef =
+        callLifecycleManagerWithTimeoutRetry(
+            () ->
+                rpcEnv.setupEndpointRef(
+                    new RpcAddress(host, port), RpcNameConstants.LIFECYCLE_MANAGER_EP),
+            "setupLifecycleManagerRef");
     initDataClientFactoryIfNeeded();
   }
 
-  public <T> T callLifecycleManagerWithTimeoutRetry(Callable<T> callable, String name)
-      throws Exception {
+  public <T> T callLifecycleManagerWithTimeoutRetry(Callable<T> callable, String name) {
     T result;
     int numRetries = 3;
     while (numRetries > 0) {
@@ -1969,7 +1962,8 @@ public class ShuffleClientImpl extends ShuffleClient {
               "Exception raised while {} calling LifecycleManager, tried {} times",
               name,
               3 - numRetries);
-          throw error;
+          throw new CelebornRuntimeException(
+              "Exception raised while calling LifecycleManager", error);
         }
       }
     }
