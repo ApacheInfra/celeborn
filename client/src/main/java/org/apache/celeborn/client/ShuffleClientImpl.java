@@ -40,6 +40,7 @@ import org.apache.celeborn.client.read.CelebornInputStream;
 import org.apache.celeborn.client.read.MetricsCallback;
 import org.apache.celeborn.common.CelebornConf;
 import org.apache.celeborn.common.exception.CelebornIOException;
+import org.apache.celeborn.common.exception.CelebornRuntimeException;
 import org.apache.celeborn.common.identity.UserIdentifier;
 import org.apache.celeborn.common.network.TransportContext;
 import org.apache.celeborn.common.network.buffer.NettyManagedBuffer;
@@ -78,7 +79,7 @@ public class ShuffleClientImpl extends ShuffleClient {
 
   private final int registerShuffleMaxRetries;
   private final long registerShuffleRetryWaitMs;
-  private final int callLifecycleManagerMaxRetry;
+  private final int rpcMaxRetries;
   private final int maxReviveTimes;
   private final boolean testRetryRevive;
   private final int pushBufferMaxSize;
@@ -177,7 +178,7 @@ public class ShuffleClientImpl extends ShuffleClient {
     this.userIdentifier = userIdentifier;
     registerShuffleMaxRetries = conf.clientRegisterShuffleMaxRetry();
     registerShuffleRetryWaitMs = conf.clientRegisterShuffleRetryWaitMs();
-    callLifecycleManagerMaxRetry = conf.clientCallLifecycleManagerMaxRetry();
+    rpcMaxRetries = conf.clientRpcMaxRetries();
     maxReviveTimes = conf.clientPushMaxReviveTimes();
     testRetryRevive = conf.testRetryRevive();
     pushBufferMaxSize = conf.clientPushBufferMaxSize();
@@ -533,7 +534,7 @@ public class ShuffleClientImpl extends ShuffleClient {
             lifecycleManagerRef.askSync(
                 RegisterShuffle$.MODULE$.apply(shuffleId, numMappers, numPartitions),
                 conf.clientRpcRegisterShuffleAskTimeout(),
-                callLifecycleManagerMaxRetry,
+                rpcMaxRetries,
                 ClassTag$.MODULE$.apply(PbRegisterShuffleResponse.class)));
   }
 
@@ -1700,12 +1701,14 @@ public class ShuffleClientImpl extends ShuffleClient {
       throws IOException {
     final String mapKey = Utils.makeMapKey(shuffleId, mapId, attemptId);
     PushState pushState = getPushState(mapKey);
+
     try {
       limitZeroInFlight(mapKey, pushState);
+
       MapperEndResponse response =
           lifecycleManagerRef.askSync(
               new MapperEnd(shuffleId, mapId, attemptId, numMappers, partitionId),
-              callLifecycleManagerMaxRetry,
+              rpcMaxRetries,
               ClassTag$.MODULE$.apply(MapperEndResponse.class));
       if (response.status() != StatusCode.SUCCESS) {
         throw new CelebornIOException("MapperEnd failed! StatusCode: " + response.status());
@@ -1755,7 +1758,7 @@ public class ShuffleClientImpl extends ShuffleClient {
           lifecycleManagerRef.askSync(
               getReducerFileGroup,
               conf.clientRpcGetReducerFileGroupAskTimeout(),
-              callLifecycleManagerMaxRetry,
+              rpcMaxRetries,
               ClassTag$.MODULE$.apply(GetReducerFileGroupResponse.class));
       switch (response.status()) {
         case SUCCESS:
@@ -1922,11 +1925,14 @@ public class ShuffleClientImpl extends ShuffleClient {
   @Override
   public void setupLifecycleManagerRef(String host, int port) {
     logger.info("setupLifecycleManagerRef: host = {}, port = {}", host, port);
-    lifecycleManagerRef =
-        rpcEnv.setupEndpointRef(
-            new RpcAddress(host, port),
-            RpcNameConstants.LIFECYCLE_MANAGER_EP,
-            callLifecycleManagerMaxRetry);
+    try {
+      lifecycleManagerRef =
+          rpcEnv.setupEndpointRef(
+              new RpcAddress(host, port), RpcNameConstants.LIFECYCLE_MANAGER_EP, rpcMaxRetries);
+    } catch (Exception e) {
+      throw new CelebornRuntimeException("setupLifecycleManagerRef failed!", e);
+    }
+
     initDataClientFactoryIfNeeded();
   }
 

@@ -22,7 +22,6 @@ license: |
 | celeborn.client.application.heartbeatInterval | 10s | false | Interval for client to send heartbeat message to master. | 0.3.0 | celeborn.application.heartbeatInterval | 
 | celeborn.client.application.unregister.enabled | true | false | When true, Celeborn client will inform celeborn master the application is already shutdown during client exit, this allows the cluster to release resources immediately, resulting in resource savings. | 0.3.2 |  | 
 | celeborn.client.application.uuidSuffix.enabled | false | false | Whether to add UUID suffix for application id for unique. When `true`, add UUID suffix for unique application id. Currently, this only applies to Spark and MR. | 0.6.0 |  | 
-| celeborn.client.callLifecycleManager.maxRetries | 3 | false | Max retry times for client to reserve slots. | 0.6.0 | celeborn.callLifecycleManager.maxRetries | 
 | celeborn.client.chunk.prefetch.enabled | false | false | Whether to enable chunk prefetch when creating CelebornInputStream. | 0.6.0 |  | 
 | celeborn.client.closeIdleConnections | true | false | Whether client will close idle connections. | 0.3.0 |  | 
 | celeborn.client.commitFiles.ignoreExcludedWorker | false | false | When true, LifecycleManager will skip workers which are in the excluded list. | 0.3.0 |  | 
@@ -81,7 +80,7 @@ license: |
 | celeborn.client.rpc.cache.size | 256 | false | The max cache items count for rpc cache. | 0.3.0 | celeborn.rpc.cache.size | 
 | celeborn.client.rpc.commitFiles.askTimeout | &lt;value of celeborn.rpc.askTimeout&gt; | false | Timeout for CommitHandler commit files. | 0.4.1 |  | 
 | celeborn.client.rpc.getReducerFileGroup.askTimeout | &lt;value of celeborn.rpc.askTimeout&gt; | false | Timeout for ask operations during getting reducer file group information. During this process, there are `celeborn.client.requestCommitFiles.maxRetries` times for retry opportunities for committing files and 1 times for releasing slots request. User can customize this value according to your setting. | 0.2.0 |  | 
-| celeborn.client.rpc.maxRetries | 3 | false | Max RPC retry times in LifecycleManager. | 0.3.2 |  | 
+| celeborn.client.rpc.maxRetries | 3 | false | Max RPC retry times in client. | 0.3.2 |  | 
 | celeborn.client.rpc.registerShuffle.askTimeout | &lt;value of celeborn.rpc.askTimeout&gt; | false | Timeout for ask operations during register shuffle. During this process, there are two times for retry opportunities for requesting slots, one request for establishing a connection with Worker and `celeborn.client.reserveSlots.maxRetries` times for retry opportunities for reserving slots. User can customize this value according to your setting. | 0.3.0 | celeborn.rpc.registerShuffle.askTimeout | 
 | celeborn.client.rpc.requestPartition.askTimeout | &lt;value of celeborn.rpc.askTimeout&gt; | false | Timeout for ask operations during requesting change partition location, such as reviving or splitting partition. During this process, there are `celeborn.client.reserveSlots.maxRetries` times for retry opportunities for reserving slots. User can customize this value according to your setting. | 0.2.0 |  | 
 | celeborn.client.rpc.reserveSlots.askTimeout | &lt;value of celeborn.rpc.askTimeout&gt; | false | Timeout for LifecycleManager request reserve slots. | 0.3.0 |  | 

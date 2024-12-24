@@ -902,7 +902,6 @@ class CelebornConf(loadDefaults: Boolean) extends Cloneable with Logging with Se
   def clientCloseIdleConnections: Boolean = get(CLIENT_CLOSE_IDLE_CONNECTIONS)
   def clientRegisterShuffleMaxRetry: Int = get(CLIENT_REGISTER_SHUFFLE_MAX_RETRIES)
   def clientRegisterShuffleRetryWaitMs: Long = get(CLIENT_REGISTER_SHUFFLE_RETRY_WAIT)
-  def clientCallLifecycleManagerMaxRetry: Int = get(CLIENT_CALL_LIFECYCLEMANAGER_MAX_RETRIES)
   def clientReserveSlotsRackAwareEnabled: Boolean = get(CLIENT_RESERVE_SLOTS_RACKAWARE_ENABLED)
   def clientReserveSlotsMaxRetries: Int = get(CLIENT_RESERVE_SLOTS_MAX_RETRIES)
   def clientReserveSlotsRetryWait: Long = get(CLIENT_RESERVE_SLOTS_RETRY_WAIT)
@@ -4887,21 +4886,12 @@ object CelebornConf extends Logging {
       .createWithDefaultString("3s")
 
   val RPC_TIMEOUT_RETRY_WAIT: ConfigEntry[Long] =
-    buildConf("celeborn.rpc.timeoutRetryWait")
+    buildConf("celeborn.rpc.retryWait")
       .categories("network")
       .version("0.6.0")
-      .doc("Wait time before next retry if RpcTimeoutException.")
+      .doc("Wait time before next retry on RpcTimeoutException.")
       .timeConf(TimeUnit.MILLISECONDS)
       .createWithDefaultString("1s")
-
-  val CLIENT_CALL_LIFECYCLEMANAGER_MAX_RETRIES: ConfigEntry[Int] =
-    buildConf("celeborn.client.callLifecycleManager.maxRetries")
-      .withAlternative("celeborn.callLifecycleManager.maxRetries")
-      .categories("client")
-      .version("0.6.0")
-      .doc("Max retry times for client to reserve slots.")
-      .intConf
-      .createWithDefault(3)
 
   val CLIENT_RESERVE_SLOTS_MAX_RETRIES: ConfigEntry[Int] =
     buildConf("celeborn.client.reserveSlots.maxRetries")
@@ -5052,7 +5042,7 @@ object CelebornConf extends Logging {
     buildConf("celeborn.client.rpc.maxRetries")
       .categories("client")
       .version("0.3.2")
-      .doc("Max RPC retry times in LifecycleManager.")
+      .doc("Max RPC retry times in client.")
       .intConf
       .createWithDefault(3)
 
