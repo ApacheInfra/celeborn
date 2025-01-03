@@ -1092,6 +1092,7 @@ class CelebornConf(loadDefaults: Boolean) extends Cloneable with Logging with Se
   def registerShuffleFilterExcludedWorkerEnabled: Boolean =
     get(REGISTER_SHUFFLE_FILTER_EXCLUDED_WORKER_ENABLED)
   def reviseLostShufflesEnabled: Boolean = get(REVISE_LOST_SHUFFLES_ENABLED)
+  def clientShuffleChecksumEnabled: Boolean = get(CLIENT_SHUFFLE_CHECKSUM_ENABLED)
 
   // //////////////////////////////////////////////////////
   //                       Worker                        //
@@ -1211,6 +1212,8 @@ class CelebornConf(loadDefaults: Boolean) extends Cloneable with Logging with Se
           Map(groupArr.head -> groupArr.slice(1, groupArr.length).toList)
         }).reduce(_ ++ _)
     }.orElse(Some(Map("MEMORY" -> List("SSD", "HDD", "HDFS", "OSS"))))
+
+  def workerChecksumVerifyEnabled: Boolean = get(WORKER_CHECKSUM_VERIFY_ENABLED)
 
   // //////////////////////////////////////////////////////
   //                   Decommission                      //
@@ -4131,6 +4134,14 @@ object CelebornConf extends Logging {
       .timeConf(TimeUnit.MILLISECONDS)
       .createWithDefault(0)
 
+  val CLIENT_SHUFFLE_CHECKSUM_ENABLED: ConfigEntry[Boolean] =
+    buildConf("celeborn.client.shuffle.checksum.enabled")
+      .categories("client")
+      .doc("Whether to enable checksum for shuffle data.")
+      .version("0.6.0")
+      .booleanConf
+      .createWithDefault(false)
+
   val WORKER_PUSH_HEARTBEAT_ENABLED: ConfigEntry[Boolean] =
     buildConf("celeborn.worker.push.heartbeat.enabled")
       .categories("worker")
@@ -5857,6 +5868,14 @@ object CelebornConf extends Logging {
       .version("0.5.0")
       .intConf
       .createWithDefault(0)
+
+  val WORKER_CHECKSUM_VERIFY_ENABLED: ConfigEntry[Boolean] =
+    buildConf("celeborn.worker.checksum.verify.enabled")
+      .categories("worker")
+      .version("0.6.0")
+      .doc("Whether to verify checksum when handling pushed data.")
+      .booleanConf
+      .createWithDefault(false)
 
   val MASTER_SEND_APPLICATION_META_THREADS: ConfigEntry[Int] =
     buildConf("celeborn.master.send.applicationMeta.threads")

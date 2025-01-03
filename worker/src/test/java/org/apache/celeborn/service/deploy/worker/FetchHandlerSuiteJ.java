@@ -67,8 +67,8 @@ import org.apache.celeborn.common.protocol.PbStreamChunkSlice;
 import org.apache.celeborn.common.protocol.PbStreamHandler;
 import org.apache.celeborn.common.protocol.StreamType;
 import org.apache.celeborn.common.protocol.TransportModuleConstants;
-import org.apache.celeborn.common.unsafe.Platform;
 import org.apache.celeborn.common.util.JavaUtils;
+import org.apache.celeborn.common.util.PushDataHeaderUtils;
 import org.apache.celeborn.common.util.Utils;
 import org.apache.celeborn.service.deploy.worker.memory.MemoryManager;
 import org.apache.celeborn.service.deploy.worker.storage.PartitionFilesSorter;
@@ -85,10 +85,13 @@ public class FetchHandlerSuiteJ {
   private static final UserIdentifier userIdentifier =
       new UserIdentifier("mock-tenantId", "mock-name");
   private static final int MAX_MAP_ID = 50;
-  private static final int DATA_SIZE_PER_BATCH = 256 * 1024 - 16; // 256k - 16byte
+  private static final int DATA_SIZE_PER_BATCH =
+      256 * 1024
+          - PushDataHeaderUtils
+              .BATCH_HEADER_SIZE; // 256k - PushDataHeaderUtils.BATCH_HEADER_SIZE byte
 
   public FileInfo prepare(int batchCountPerMap) throws IOException {
-    byte[] batchHeader = new byte[16];
+    byte[] batchHeader = new byte[PushDataHeaderUtils.BATCH_HEADER_SIZE];
     File shuffleFile = File.createTempFile("celeborn", UUID.randomUUID().toString());
 
     DiskFileInfo fileInfo = new DiskFileInfo(shuffleFile, userIdentifier, conf);
@@ -111,10 +114,8 @@ public class FetchHandlerSuiteJ {
                 return v;
               });
       byte[] mockedData = new byte[DATA_SIZE_PER_BATCH];
-      Platform.putInt(batchHeader, Platform.BYTE_ARRAY_OFFSET, mapId);
-      Platform.putInt(batchHeader, Platform.BYTE_ARRAY_OFFSET + 4, currentAttemptId);
-      Platform.putInt(batchHeader, Platform.BYTE_ARRAY_OFFSET + 8, batchId);
-      Platform.putInt(batchHeader, Platform.BYTE_ARRAY_OFFSET + 12, DATA_SIZE_PER_BATCH);
+      PushDataHeaderUtils.buildDataHeader(
+          batchHeader, mapId, currentAttemptId, batchId, DATA_SIZE_PER_BATCH, true);
       ByteBuffer buf1 = ByteBuffer.wrap(batchHeader);
       while (buf1.hasRemaining()) {
         channel.write(buf1);

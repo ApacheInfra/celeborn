@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import io.netty.channel.Channel;
@@ -46,6 +47,7 @@ import org.apache.celeborn.common.protocol.PartitionLocation;
 import org.apache.celeborn.common.protocol.message.ControlMessages.*;
 import org.apache.celeborn.common.protocol.message.StatusCode;
 import org.apache.celeborn.common.rpc.RpcEndpointRef;
+import org.apache.celeborn.common.util.PushDataHeaderUtils;
 
 public class ShuffleClientSuiteJ {
 
@@ -89,32 +91,39 @@ public class ShuffleClientSuiteJ {
           PartitionLocation.Mode.REPLICA);
 
   private static final byte[] TEST_BUF1 = "hello world".getBytes(StandardCharsets.UTF_8);
-  private final int BATCH_HEADER_SIZE = 4 * 4;
 
   @Test
   public void testPushData() throws IOException, InterruptedException {
     for (CompressionCodec codec : CompressionCodec.values()) {
-      CelebornConf conf = setupEnv(codec);
+      for (Boolean checksumEnabled : Arrays.asList(true, false)) {
+        CelebornConf conf = setupEnv(codec, StatusCode.SUCCESS, false, checksumEnabled);
+        int headerLength;
+        if (checksumEnabled) {
+          headerLength = PushDataHeaderUtils.BATCH_HEADER_SIZE;
+        } else {
+          headerLength = PushDataHeaderUtils.BATCH_HEADER_SIZE_WITHOUT_CHECKSUM;
+        }
 
-      int pushDataLen =
-          shuffleClient.pushData(
-              TEST_SHUFFLE_ID,
-              TEST_ATTEMPT_ID,
-              TEST_ATTEMPT_ID,
-              TEST_REDUCRE_ID,
-              TEST_BUF1,
-              0,
-              TEST_BUF1.length,
-              1,
-              1);
+        int pushDataLen =
+            shuffleClient.pushData(
+                TEST_SHUFFLE_ID,
+                TEST_ATTEMPT_ID,
+                TEST_ATTEMPT_ID,
+                TEST_REDUCRE_ID,
+                TEST_BUF1,
+                0,
+                TEST_BUF1.length,
+                1,
+                1);
 
-      if (codec.equals(CompressionCodec.NONE)) {
-        assertEquals(TEST_BUF1.length + BATCH_HEADER_SIZE, pushDataLen);
-      } else {
-        Compressor compressor = Compressor.getCompressor(conf);
-        compressor.compress(TEST_BUF1, 0, TEST_BUF1.length);
-        final int compressedTotalSize = compressor.getCompressedTotalSize();
-        assertEquals(compressedTotalSize + BATCH_HEADER_SIZE, pushDataLen);
+        if (codec.equals(CompressionCodec.NONE)) {
+          assertEquals(TEST_BUF1.length + headerLength, pushDataLen);
+        } else {
+          Compressor compressor = Compressor.getCompressor(conf);
+          compressor.compress(TEST_BUF1, 0, TEST_BUF1.length);
+          final int compressedTotalSize = compressor.getCompressedTotalSize();
+          assertEquals(compressedTotalSize + headerLength, pushDataLen);
+        }
       }
     }
   }
@@ -147,49 +156,56 @@ public class ShuffleClientSuiteJ {
   @Test
   public void testMergeData() throws IOException, InterruptedException {
     for (CompressionCodec codec : CompressionCodec.values()) {
-      CelebornConf conf = setupEnv(codec);
+      for (Boolean checksumEnabled : Arrays.asList(true, false)) {
+        CelebornConf conf = setupEnv(codec, StatusCode.SUCCESS, false, checksumEnabled);
+        int headerLength;
+        if (checksumEnabled) {
+          headerLength = PushDataHeaderUtils.BATCH_HEADER_SIZE;
+        } else {
+          headerLength = PushDataHeaderUtils.BATCH_HEADER_SIZE_WITHOUT_CHECKSUM;
+        }
+        int mergeSize =
+            shuffleClient.mergeData(
+                TEST_SHUFFLE_ID,
+                TEST_ATTEMPT_ID,
+                TEST_ATTEMPT_ID,
+                TEST_REDUCRE_ID,
+                TEST_BUF1,
+                0,
+                TEST_BUF1.length,
+                1,
+                1);
 
-      int mergeSize =
-          shuffleClient.mergeData(
-              TEST_SHUFFLE_ID,
-              TEST_ATTEMPT_ID,
-              TEST_ATTEMPT_ID,
-              TEST_REDUCRE_ID,
-              TEST_BUF1,
-              0,
-              TEST_BUF1.length,
-              1,
-              1);
+        if (codec.equals(CompressionCodec.NONE)) {
+          assertEquals(TEST_BUF1.length + headerLength, mergeSize);
+        } else {
+          Compressor compressor = Compressor.getCompressor(conf);
+          compressor.compress(TEST_BUF1, 0, TEST_BUF1.length);
+          final int compressedTotalSize = compressor.getCompressedTotalSize();
+          assertEquals(compressedTotalSize + headerLength, mergeSize);
+        }
 
-      if (codec.equals(CompressionCodec.NONE)) {
-        assertEquals(TEST_BUF1.length + BATCH_HEADER_SIZE, mergeSize);
-      } else {
-        Compressor compressor = Compressor.getCompressor(conf);
-        compressor.compress(TEST_BUF1, 0, TEST_BUF1.length);
-        final int compressedTotalSize = compressor.getCompressedTotalSize();
-        assertEquals(compressedTotalSize + BATCH_HEADER_SIZE, mergeSize);
-      }
+        byte[] buf1k = RandomStringUtils.random(4000).getBytes(StandardCharsets.UTF_8);
+        int largeMergeSize =
+            shuffleClient.mergeData(
+                TEST_SHUFFLE_ID,
+                TEST_ATTEMPT_ID,
+                TEST_ATTEMPT_ID,
+                TEST_REDUCRE_ID,
+                buf1k,
+                0,
+                buf1k.length,
+                1,
+                1);
 
-      byte[] buf1k = RandomStringUtils.random(4000).getBytes(StandardCharsets.UTF_8);
-      int largeMergeSize =
-          shuffleClient.mergeData(
-              TEST_SHUFFLE_ID,
-              TEST_ATTEMPT_ID,
-              TEST_ATTEMPT_ID,
-              TEST_REDUCRE_ID,
-              buf1k,
-              0,
-              buf1k.length,
-              1,
-              1);
-
-      if (codec.equals(CompressionCodec.NONE)) {
-        assertEquals(buf1k.length + BATCH_HEADER_SIZE, largeMergeSize);
-      } else {
-        Compressor compressor = Compressor.getCompressor(conf);
-        compressor.compress(buf1k, 0, buf1k.length);
-        final int compressedTotalSize = compressor.getCompressedTotalSize();
-        assertEquals(compressedTotalSize + BATCH_HEADER_SIZE, largeMergeSize);
+        if (codec.equals(CompressionCodec.NONE)) {
+          assertEquals(buf1k.length + headerLength, largeMergeSize);
+        } else {
+          Compressor compressor = Compressor.getCompressor(conf);
+          compressor.compress(buf1k, 0, buf1k.length);
+          final int compressedTotalSize = compressor.getCompressedTotalSize();
+          assertEquals(compressedTotalSize + headerLength, largeMergeSize);
+        }
       }
     }
   }
@@ -235,10 +251,20 @@ public class ShuffleClientSuiteJ {
   private CelebornConf setupEnv(
       CompressionCodec codec, StatusCode statusCode, boolean interruptWhenPushData)
       throws IOException, InterruptedException {
+    return setupEnv(codec, statusCode, interruptWhenPushData, false);
+  }
+
+  private CelebornConf setupEnv(
+      CompressionCodec codec,
+      StatusCode statusCode,
+      boolean interruptWhenPushData,
+      Boolean enableChecksum)
+      throws IOException, InterruptedException {
     CelebornConf conf = new CelebornConf();
     conf.set(CelebornConf.SHUFFLE_COMPRESSION_CODEC().key(), codec.name());
     conf.set(CelebornConf.CLIENT_PUSH_RETRY_THREADS().key(), "1");
     conf.set(CelebornConf.CLIENT_PUSH_BUFFER_MAX_SIZE().key(), "1K");
+    conf.set(CelebornConf.CLIENT_SHUFFLE_CHECKSUM_ENABLED().key(), enableChecksum.toString());
     shuffleClient =
         new ShuffleClientImpl(TEST_APPLICATION_ID, conf, new UserIdentifier("mock", "mock"));
 

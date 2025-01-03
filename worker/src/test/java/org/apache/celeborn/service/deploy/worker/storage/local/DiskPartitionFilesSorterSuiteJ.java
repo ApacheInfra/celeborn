@@ -39,9 +39,9 @@ import org.apache.celeborn.common.identity.UserIdentifier;
 import org.apache.celeborn.common.meta.DiskFileInfo;
 import org.apache.celeborn.common.meta.FileInfo;
 import org.apache.celeborn.common.meta.ReduceFileMeta;
-import org.apache.celeborn.common.unsafe.Platform;
 import org.apache.celeborn.common.util.CelebornExitKind;
 import org.apache.celeborn.common.util.JavaUtils;
+import org.apache.celeborn.common.util.PushDataHeaderUtils;
 import org.apache.celeborn.common.util.Utils;
 import org.apache.celeborn.service.deploy.worker.WorkerSource;
 import org.apache.celeborn.service.deploy.worker.memory.MemoryManager;
@@ -64,7 +64,7 @@ public class DiskPartitionFilesSorterSuiteJ {
 
   public long[] prepare(int mapCount) throws IOException {
     long[] partitionSize = new long[MAX_MAP_ID];
-    byte[] batchHeader = new byte[16];
+    byte[] batchHeader = new byte[PushDataHeaderUtils.BATCH_HEADER_SIZE];
     shuffleFile = File.createTempFile("Celeborn", "sort-suite");
 
     originFileName = shuffleFile.getAbsolutePath();
@@ -90,10 +90,8 @@ public class DiskPartitionFilesSorterSuiteJ {
       // [63.9k, 192k + 63.9k]
       int dataSize = random.nextInt(192 * 1024) + 65525;
       byte[] mockedData = new byte[dataSize];
-      Platform.putInt(batchHeader, Platform.BYTE_ARRAY_OFFSET, mapId);
-      Platform.putInt(batchHeader, Platform.BYTE_ARRAY_OFFSET + 4, currentAttemptId);
-      Platform.putInt(batchHeader, Platform.BYTE_ARRAY_OFFSET + 8, batchId);
-      Platform.putInt(batchHeader, Platform.BYTE_ARRAY_OFFSET + 12, dataSize);
+      PushDataHeaderUtils.buildDataHeader(
+          batchHeader, mapId, currentAttemptId, batchId, dataSize, true);
       ByteBuffer buf1 = ByteBuffer.wrap(batchHeader);
       while (buf1.hasRemaining()) {
         channel.write(buf1);

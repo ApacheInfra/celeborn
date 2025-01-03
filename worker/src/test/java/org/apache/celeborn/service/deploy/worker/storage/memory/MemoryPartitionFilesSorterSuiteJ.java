@@ -38,7 +38,7 @@ import org.apache.celeborn.common.meta.MemoryFileInfo;
 import org.apache.celeborn.common.meta.ReduceFileMeta;
 import org.apache.celeborn.common.metrics.source.AbstractSource;
 import org.apache.celeborn.common.network.util.NettyUtils;
-import org.apache.celeborn.common.unsafe.Platform;
+import org.apache.celeborn.common.util.PushDataHeaderUtils;
 import org.apache.celeborn.service.deploy.worker.WorkerSource;
 import org.apache.celeborn.service.deploy.worker.memory.MemoryManager;
 import org.apache.celeborn.service.deploy.worker.storage.PartitionDataWriter;
@@ -56,7 +56,7 @@ public class MemoryPartitionFilesSorterSuiteJ {
 
   public long[] prepare(int mapCount) {
     long[] partitionSize = new long[MAX_MAP_ID];
-    byte[] batchHeader = new byte[16];
+    byte[] batchHeader = new byte[PushDataHeaderUtils.BATCH_HEADER_SIZE];
     fileInfo = new MemoryFileInfo(userIdentifier, true, new ReduceFileMeta(8 * 1024 * 1024));
 
     AbstractSource source = Mockito.mock(AbstractSource.class);
@@ -84,10 +84,8 @@ public class MemoryPartitionFilesSorterSuiteJ {
       // [63.9k, 192k + 63.9k]
       int dataSize = random.nextInt(192 * 1024) + 65525;
       byte[] mockedData = new byte[dataSize];
-      Platform.putInt(batchHeader, Platform.BYTE_ARRAY_OFFSET, mapId);
-      Platform.putInt(batchHeader, Platform.BYTE_ARRAY_OFFSET + 4, currentAttemptId);
-      Platform.putInt(batchHeader, Platform.BYTE_ARRAY_OFFSET + 8, batchId);
-      Platform.putInt(batchHeader, Platform.BYTE_ARRAY_OFFSET + 12, dataSize);
+      PushDataHeaderUtils.buildDataHeader(
+          batchHeader, mapId, currentAttemptId, batchId, dataSize, true);
       ByteBuffer buf1 = ByteBuffer.wrap(batchHeader);
       while (buf1.hasRemaining()) {
         buffer.writeBytes(buf1);

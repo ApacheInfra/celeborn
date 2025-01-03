@@ -54,6 +54,7 @@ license: |
 | celeborn.worker.activeConnection.max | &lt;undefined&gt; | false | If the number of active connections on a worker exceeds this configuration value, the worker will be marked as high-load in the heartbeat report, and the master will not include that node in the response of RequestSlots. | 0.3.1 |  | 
 | celeborn.worker.applicationRegistry.cache.size | 10000 | false | Cache size of the application registry on Workers. | 0.5.0 |  | 
 | celeborn.worker.bufferStream.threadsPerMountpoint | 8 | false | Threads count for read buffer per mount point. | 0.3.0 |  | 
+| celeborn.worker.checksum.verify.enabled | false | false | Whether to verify checksum when handling pushed data. | 0.6.0 |  | 
 | celeborn.worker.clean.threads | 64 | false | Thread number of worker to clean up expired shuffle keys. | 0.3.2 |  | 
 | celeborn.worker.closeIdleConnections | false | false | Whether worker will close idle connections. | 0.2.0 |  | 
 | celeborn.worker.commitFiles.threads | 32 | false | Thread number of worker to commit shuffle data files asynchronously. It's recommended to set at least `128` when `HDFS` is enabled in `celeborn.storage.availableTypes`. | 0.3.0 | celeborn.worker.commit.threads | 

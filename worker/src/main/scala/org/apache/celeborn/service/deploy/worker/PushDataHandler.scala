@@ -30,7 +30,7 @@ import scala.util.{Failure, Success, Try}
 import com.google.protobuf.GeneratedMessageV3
 import io.netty.buffer.ByteBuf
 
-import org.apache.celeborn.common.exception.{AlreadyClosedException, CelebornIOException}
+import org.apache.celeborn.common.exception.{AlreadyClosedException, CelebornChecksumException, CelebornIOException}
 import org.apache.celeborn.common.internal.Logging
 import org.apache.celeborn.common.meta.{DiskStatus, WorkerInfo, WorkerPartitionLocationInfo}
 import org.apache.celeborn.common.metrics.source.Source
@@ -43,7 +43,7 @@ import org.apache.celeborn.common.protocol.{PartitionLocation, PartitionSplitMod
 import org.apache.celeborn.common.protocol.PbPartitionLocation.Mode
 import org.apache.celeborn.common.protocol.message.StatusCode
 import org.apache.celeborn.common.unsafe.Platform
-import org.apache.celeborn.common.util.{ExceptionUtils, Utils}
+import org.apache.celeborn.common.util.{ExceptionUtils, PushDataHeaderUtils, Utils}
 import org.apache.celeborn.service.deploy.worker.congestcontrol.CongestionController
 import org.apache.celeborn.service.deploy.worker.storage.{HdfsFlusher, LocalFlusher, MapPartitionDataWriter, PartitionDataWriter, S3Flusher, StorageManager}
 import org.apache.celeborn.service.deploy.worker.storage.segment.SegmentMapPartitionFileWriter
@@ -65,6 +65,7 @@ class PushDataHandler(val workerSource: WorkerSource) extends BaseMessageHandler
   private var storageManager: StorageManager = _
   private var workerPartitionSplitEnabled: Boolean = _
   private var workerReplicateRandomConnectionEnabled: Boolean = _
+  private var workerChecksumVerifyEnabled: Boolean = _
 
   private var testPushPrimaryDataTimeout: Boolean = _
   private var testPushReplicaDataTimeout: Boolean = _
@@ -84,6 +85,7 @@ class PushDataHandler(val workerSource: WorkerSource) extends BaseMessageHandler
     shutdown = worker.shutdown
     workerPartitionSplitEnabled = worker.conf.workerPartitionSplitEnabled
     workerReplicateRandomConnectionEnabled = worker.conf.workerReplicateRandomConnectionEnabled
+    workerChecksumVerifyEnabled = worker.conf.workerChecksumVerifyEnabled
 
     testPushPrimaryDataTimeout = worker.conf.testPushPrimaryDataTimeout
     testPushReplicaDataTimeout = worker.conf.testPushReplicaDataTimeout
@@ -829,8 +831,8 @@ class PushDataHandler(val workerSource: WorkerSource) extends BaseMessageHandler
     // header: mapId attemptId batchId compressedTotalSize
     val header = new Array[Byte](8)
     body.getBytes(body.readerIndex(), header)
-    val mapId = Platform.getInt(header, Platform.BYTE_ARRAY_OFFSET)
-    val attemptId = Platform.getInt(header, Platform.BYTE_ARRAY_OFFSET + 4)
+    val mapId = PushDataHeaderUtils.getMapId(header)
+    val attemptId = PushDataHeaderUtils.getAttemptId(header)
     (mapId, attemptId)
   }
 
@@ -1490,18 +1492,41 @@ class PushDataHandler(val workerSource: WorkerSource) extends BaseMessageHandler
       hardSplitIndexes: Array[Int] = Array.empty[Int]): Unit = {
     val length = fileWriters.length
     val result = new Array[StatusCode](length)
+
+    def verifyDataChecksum(body: ByteBuf): Boolean = {
+      val header = new Array[Byte](PushDataHeaderUtils.BATCH_HEADER_SIZE_WITHOUT_CHECKSUM)
+      body.getBytes(body.readerIndex(), header)
+      if (PushDataHeaderUtils.hasChecksumFlag(header)) {
+        val checksumBytes = new Array[Byte](4)
+        body.getBytes(
+          body.readerIndex() + PushDataHeaderUtils.BATCH_HEADER_SIZE_WITHOUT_CHECKSUM,
+          checksumBytes)
+        val expectedChecksum = Platform.getInt(checksumBytes, Platform.BYTE_ARRAY_OFFSET)
+        val currentChecksum = PushDataHeaderUtils.computeHeaderChecksum32(header)
+        expectedChecksum == currentChecksum
+      } else {
+        logDebug(s"Checksum flag is not set, skip checksum verification for $shuffleKey")
+        true
+      }
+    }
+
     def writeData(
         fileWriter: PartitionDataWriter,
         body: ByteBuf,
         shuffleKey: String,
         index: Int): Unit = {
       try {
+        if (workerChecksumVerifyEnabled) {
+          if (!verifyDataChecksum(body)) {
+            throw new CelebornChecksumException(StatusCode.PUSH_DATA_CHECKSUM_FAIL)
+          }
+        }
         fileWriter.write(body)
         result(index) = StatusCode.SUCCESS
       } catch {
         case e: Throwable =>
+          val (mapId, attemptId) = getMapAttempt(body)
           if (e.isInstanceOf[AlreadyClosedException]) {
-            val (mapId, attemptId) = getMapAttempt(body)
             val endedAttempt =
               if (shuffleMapperAttempts.containsKey(shuffleKey)) {
                 shuffleMapperAttempts.get(shuffleKey).get(mapId)
@@ -1511,6 +1536,11 @@ class PushDataHandler(val workerSource: WorkerSource) extends BaseMessageHandler
               s" $attemptId), caused by AlreadyClosedException, endedAttempt $endedAttempt, error message: ${e.getMessage}")
             workerSource.incCounter(WorkerSource.WRITE_DATA_HARD_SPLIT_COUNT)
             result(index) = StatusCode.HARD_SPLIT
+          } else if (e.isInstanceOf[CelebornChecksumException]) {
+            logError(
+              s"Checksum verification failed for task(shuffle $shuffleKey, map $mapId, attempt $attemptId")
+            workerSource.incCounter(WorkerSource.CHECKSUM_VERIFICATION_FAIL_COUNT)
+            writePromise.failure(e)
           } else {
             logError("Exception encountered when write.", e)
             workerSource.incCounter(WorkerSource.WRITE_DATA_FAIL_COUNT)

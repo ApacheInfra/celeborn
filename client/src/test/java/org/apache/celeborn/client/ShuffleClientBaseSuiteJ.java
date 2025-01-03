@@ -77,7 +77,6 @@ public abstract class ShuffleClientBaseSuiteJ {
           REPLICA_REPLICATE_PORT,
           PartitionLocation.Mode.REPLICA);
 
-  protected final int BATCH_HEADER_SIZE = 4 * 4;
   protected ChannelFuture mockedFuture = mock(ChannelFuture.class);
 
   protected CelebornConf setupEnv(CompressionCodec codec) throws IOException, InterruptedException {

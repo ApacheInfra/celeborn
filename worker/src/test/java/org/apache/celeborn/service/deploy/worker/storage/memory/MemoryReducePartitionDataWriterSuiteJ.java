@@ -51,7 +51,7 @@ import org.apache.celeborn.common.network.server.TransportServer;
 import org.apache.celeborn.common.network.util.NettyUtils;
 import org.apache.celeborn.common.network.util.TransportConf;
 import org.apache.celeborn.common.protocol.*;
-import org.apache.celeborn.common.unsafe.Platform;
+import org.apache.celeborn.common.util.PushDataHeaderUtils;
 import org.apache.celeborn.common.util.ThreadUtils;
 import org.apache.celeborn.service.deploy.worker.FetchHandler;
 import org.apache.celeborn.service.deploy.worker.WorkerSource;
@@ -845,17 +845,17 @@ public class MemoryReducePartitionDataWriterSuiteJ {
 
   private byte[] generateDataWithHeader() {
     ThreadLocalRandom rand = ThreadLocalRandom.current();
-    byte[] header = new byte[16];
-    Platform.putInt(header, Platform.BYTE_ARRAY_OFFSET, 1);
-    Platform.putInt(header, Platform.BYTE_ARRAY_OFFSET + 4, 1);
-    Platform.putInt(header, Platform.BYTE_ARRAY_OFFSET + 8, 1);
+    byte[] header = new byte[PushDataHeaderUtils.BATCH_HEADER_SIZE];
+    int mapId = 1;
+    int attemptId = 1;
+    int batchId = 1;
     byte[] hello = "hello, world".getBytes(StandardCharsets.UTF_8);
     int tempLen = rand.nextInt(256 * 1024) + 128 * 1024;
     int len = (int) (Math.ceil(1.0 * tempLen / hello.length) * hello.length);
-    Platform.putInt(header, Platform.BYTE_ARRAY_OFFSET + 12, len);
+    PushDataHeaderUtils.buildDataHeader(header, mapId, attemptId, batchId, len, true);
 
-    byte[] data = new byte[16 + len];
-    System.arraycopy(header, 0, data, 0, 16);
+    byte[] data = new byte[PushDataHeaderUtils.BATCH_HEADER_SIZE + len];
+    System.arraycopy(header, 0, data, 0, PushDataHeaderUtils.BATCH_HEADER_SIZE);
     for (int i = 0; i < len; i += hello.length) {
       System.arraycopy(hello, 0, data, 16 + i, hello.length);
     }

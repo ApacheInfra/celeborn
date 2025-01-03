@@ -64,7 +64,6 @@ import org.apache.celeborn.common.protocol.message.StatusCode;
 import org.apache.celeborn.common.rpc.RpcAddress;
 import org.apache.celeborn.common.rpc.RpcEndpointRef;
 import org.apache.celeborn.common.rpc.RpcEnv;
-import org.apache.celeborn.common.unsafe.Platform;
 import org.apache.celeborn.common.util.*;
 import org.apache.celeborn.common.write.DataBatches;
 import org.apache.celeborn.common.write.PushState;
@@ -94,8 +93,6 @@ public class ShuffleClientImpl extends ShuffleClient {
   private TransportContext transportContext;
   protected TransportClientFactory dataClientFactory;
 
-  protected final int BATCH_HEADER_SIZE = 4 * 4;
-
   protected byte[] extension;
 
   // key: appShuffleIdentifier, value: shuffleId
@@ -122,6 +119,7 @@ public class ShuffleClientImpl extends ShuffleClient {
       JavaUtils.newConcurrentHashMap();
   private boolean pushReplicateEnabled;
   private boolean fetchExcludeWorkerOnFailureEnabled;
+  private boolean clientShuffleChecksumEnabled;
 
   private final ExecutorService pushDataRetryPool;
 
@@ -187,6 +185,7 @@ public class ShuffleClientImpl extends ShuffleClient {
     shuffleCompressionEnabled = !conf.shuffleCompressionCodec().equals(CompressionCodec.NONE);
     pushReplicateEnabled = conf.clientPushReplicateEnabled();
     fetchExcludeWorkerOnFailureEnabled = conf.clientFetchExcludeWorkerOnFailureEnabled();
+    clientShuffleChecksumEnabled = conf.clientShuffleChecksumEnabled();
     if (conf.clientPushReplicateEnabled()) {
       pushDataTimeout = conf.pushDataTimeoutMs() * 2;
     } else {
@@ -1002,12 +1001,16 @@ public class ShuffleClientImpl extends ShuffleClient {
       length = compressor.getCompressedTotalSize();
     }
 
-    final byte[] body = new byte[BATCH_HEADER_SIZE + length];
-    Platform.putInt(body, Platform.BYTE_ARRAY_OFFSET, mapId);
-    Platform.putInt(body, Platform.BYTE_ARRAY_OFFSET + 4, attemptId);
-    Platform.putInt(body, Platform.BYTE_ARRAY_OFFSET + 8, nextBatchId);
-    Platform.putInt(body, Platform.BYTE_ARRAY_OFFSET + 12, length);
-    System.arraycopy(data, offset, body, BATCH_HEADER_SIZE, length);
+    final int headerSize;
+    if (clientShuffleChecksumEnabled) {
+      headerSize = PushDataHeaderUtils.BATCH_HEADER_SIZE;
+    } else {
+      headerSize = PushDataHeaderUtils.BATCH_HEADER_SIZE_WITHOUT_CHECKSUM;
+    }
+    final byte[] body = new byte[headerSize + length];
+    PushDataHeaderUtils.buildDataHeader(
+        body, mapId, attemptId, nextBatchId, length, clientShuffleChecksumEnabled);
+    System.arraycopy(data, offset, body, headerSize, length);
 
     if (doPush) {
       // check limit
@@ -1987,6 +1990,9 @@ public class ShuffleClientImpl extends ShuffleClient {
       cause = StatusCode.PUSH_DATA_REPLICA_WORKER_EXCLUDED;
     } else if (message.startsWith(StatusCode.PUSH_DATA_FAIL_PARTITION_NOT_FOUND.name())) {
       cause = StatusCode.PUSH_DATA_FAIL_PARTITION_NOT_FOUND;
+    } else if (message.startsWith(StatusCode.PUSH_DATA_CHECKSUM_FAIL.name())) {
+      // TODO: prefer to retry instead of revive
+      cause = StatusCode.PUSH_DATA_CHECKSUM_FAIL;
     } else if (ExceptionUtils.connectFail(message)) {
       // Throw when push to primary worker connection causeException.
       cause = StatusCode.PUSH_DATA_CONNECTION_EXCEPTION_PRIMARY;

@@ -89,7 +89,8 @@ public enum StatusCode {
   OPEN_STREAM_FAILED(51),
   SEGMENT_START_FAIL_REPLICA(52),
   SEGMENT_START_FAIL_PRIMARY(53),
-  NO_SPLIT(54);
+  NO_SPLIT(54),
+  PUSH_DATA_CHECKSUM_FAIL(55);
 
   private final byte value;
 

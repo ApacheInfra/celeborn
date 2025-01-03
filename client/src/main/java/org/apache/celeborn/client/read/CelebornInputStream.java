@@ -40,8 +40,8 @@ import org.apache.celeborn.common.CelebornConf;
 import org.apache.celeborn.common.exception.CelebornIOException;
 import org.apache.celeborn.common.network.client.TransportClientFactory;
 import org.apache.celeborn.common.protocol.*;
-import org.apache.celeborn.common.unsafe.Platform;
 import org.apache.celeborn.common.util.ExceptionMaker;
+import org.apache.celeborn.common.util.PushDataHeaderUtils;
 import org.apache.celeborn.common.util.Utils;
 
 public abstract class CelebornInputStream extends InputStream {
@@ -151,8 +151,7 @@ public abstract class CelebornInputStream extends InputStream {
     private MetricsCallback callback;
 
     // mapId, attemptId, batchId, size
-    private final int BATCH_HEADER_SIZE = 4 * 4;
-    private final byte[] sizeBuf = new byte[BATCH_HEADER_SIZE];
+    private final byte[] sizeBuf;
     private LongAdder skipCount = new LongAdder();
     private final boolean rangeReadFilter;
     private final boolean enabledReadLocalShuffle;
@@ -169,6 +168,7 @@ public abstract class CelebornInputStream extends InputStream {
     private int partitionId;
     private ExceptionMaker exceptionMaker;
     private boolean closed = false;
+    private boolean checksumEnabled;
 
     CelebornInputStreamImpl(
         CelebornConf conf,
@@ -225,6 +225,12 @@ public abstract class CelebornInputStream extends InputStream {
       if (chunkPrefetchEnabled) {
         init();
         firstChunk = false;
+      }
+      this.checksumEnabled = conf.clientShuffleChecksumEnabled();
+      if (checksumEnabled) {
+        sizeBuf = new byte[PushDataHeaderUtils.BATCH_HEADER_SIZE];
+      } else {
+        sizeBuf = new byte[PushDataHeaderUtils.BATCH_HEADER_SIZE_WITHOUT_CHECKSUM];
       }
     }
 
@@ -586,10 +592,13 @@ public abstract class CelebornInputStream extends InputStream {
         boolean hasData = false;
         while (currentChunk.isReadable() || moveToNextChunk()) {
           currentChunk.readBytes(sizeBuf);
-          int mapId = Platform.getInt(sizeBuf, Platform.BYTE_ARRAY_OFFSET);
-          int attemptId = Platform.getInt(sizeBuf, Platform.BYTE_ARRAY_OFFSET + 4);
-          int batchId = Platform.getInt(sizeBuf, Platform.BYTE_ARRAY_OFFSET + 8);
-          int size = Platform.getInt(sizeBuf, Platform.BYTE_ARRAY_OFFSET + 12);
+          if (checksumEnabled && !PushDataHeaderUtils.checkHeaderChecksum32(sizeBuf)) {
+            throw new CelebornIOException("Data Corrupted: checksum not match");
+          }
+          int mapId = PushDataHeaderUtils.getMapId(sizeBuf);
+          int attemptId = PushDataHeaderUtils.getAttemptId(sizeBuf);
+          int batchId = PushDataHeaderUtils.getBatchId(sizeBuf);
+          int size = PushDataHeaderUtils.getDataLength(sizeBuf);
 
           if (shuffleCompressionEnabled) {
             if (size > compressedBuf.length) {
@@ -614,7 +623,7 @@ public abstract class CelebornInputStream extends InputStream {
             Set<Integer> batchSet = batchesRead.get(mapId);
             if (!batchSet.contains(batchId)) {
               batchSet.add(batchId);
-              callback.incBytesRead(BATCH_HEADER_SIZE + size);
+              callback.incBytesRead(PushDataHeaderUtils.BATCH_HEADER_SIZE + size);
               if (shuffleCompressionEnabled) {
                 // decompress data
                 int originalLength = decompressor.getOriginalLen(compressedBuf);

@@ -79,6 +79,7 @@ public class FlinkShuffleClientImpl extends ShuffleClientImpl {
   private ConcurrentHashMap<String, TransportClient> currentClient =
       JavaUtils.newConcurrentHashMap();
   private long driverTimestamp;
+  private final int BATCH_HEADER_SIZE = 4 * 4;
 
   private final TransportContext context;
 
