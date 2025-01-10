@@ -45,10 +45,13 @@ object MasterSource {
 
   val REGISTERED_SHUFFLE_COUNT = "RegisteredShuffleCount"
   val SHUFFLE_FALLBACK_COUNT = "ShuffleFallbackCount"
-  // The total count including RegisteredShuffleCount(celeborn shuffle) and ShuffleFallbackCount(spark built-in shuffle).
+  // The total count including RegisteredShuffleCount(celeborn shuffle) and ShuffleFallbackCount(engine built-in shuffle).
   val SHUFFLE_TOTAL_COUNT = "ShuffleTotalCount"
 
   val RUNNING_APPLICATION_COUNT = "RunningApplicationCount"
+  val APPLICATION_FALLBACK_COUNT = "ApplicationFallbackCount"
+  // The total count including RunningApplicationCount(celeborn shuffle) and ApplicationFallbackCount(engine built-in shuffle).
+  val APPLICATION_TOTAL_COUNT = "ApplicationTotalCount"
 
   val IS_ACTIVE_MASTER = "IsActiveMaster"
 

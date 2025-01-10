@@ -104,13 +104,17 @@ public class RemoteShuffleMaster implements ShuffleMaster<ShuffleDescriptor> {
       }
     }
 
+    lifecycleManager.applicationCount().increment();
     try {
       if (nettyShuffleServiceFactory != null) {
         Optional<ShuffleFallbackPolicy> shuffleFallbackPolicy =
             ShuffleFallbackPolicyRunner.getActivatedFallbackPolicy(context, conf, lifecycleManager);
         if (shuffleFallbackPolicy.isPresent()) {
           LOG.warn("Fallback to vanilla Flink NettyShuffleMaster for job: {}.", jobID);
-          jobFallbackPolicies.put(jobID, shuffleFallbackPolicy.get().getClass().getName());
+          String jobFallbackPolicy = shuffleFallbackPolicy.get().getClass().getName();
+          jobFallbackPolicies.put(jobID, jobFallbackPolicy);
+          lifecycleManager.computeFallbackCounts(
+              lifecycleManager.applicationFallbackCounts(), jobFallbackPolicy);
           nettyShuffleMaster().registerJob(context);
           return;
         }
@@ -158,9 +162,8 @@ public class RemoteShuffleMaster implements ShuffleMaster<ShuffleDescriptor> {
           String jobFallbackPolicy = jobFallbackPolicies.get(jobID);
           if (jobFallbackPolicy != null) {
             try {
-              lifecycleManager
-                  .shuffleFallbackCounts()
-                  .compute(jobFallbackPolicy, (key, value) -> value == null ? 1L : value + 1L);
+              lifecycleManager.computeFallbackCounts(
+                  lifecycleManager.shuffleFallbackCounts(), jobFallbackPolicy);
               return nettyShuffleMaster()
                   .registerPartitionWithProducer(jobID, partitionDescriptor, producerDescriptor)
                   .get();

@@ -92,7 +92,9 @@ public abstract class AbstractMetaManager implements IMetadataHandler {
   public final LongAdder partitionTotalWritten = new LongAdder();
   public final LongAdder partitionTotalFileCount = new LongAdder();
   public final LongAdder shuffleTotalCount = new LongAdder();
+  public final LongAdder applicationTotalCount = new LongAdder();
   public final Map<String, Long> shuffleFallbackCounts = JavaUtils.newConcurrentHashMap();
+  public final Map<String, Long> applicationFallbackCounts = JavaUtils.newConcurrentHashMap();
 
   public final ConcurrentHashMap<String, ApplicationMeta> applicationMetas =
       JavaUtils.newConcurrentHashMap();
@@ -152,12 +154,16 @@ public abstract class AbstractMetaManager implements IMetadataHandler {
       long totalWritten,
       long fileCount,
       long shuffleCount,
-      Map<String, Long> shuffleFallbackCounts) {
+      long applicationCount,
+      Map<String, Long> shuffleFallbackCounts,
+      Map<String, Long> applicationFallbackCounts) {
     appHeartbeatTime.put(appId, time);
     partitionTotalWritten.add(totalWritten);
     partitionTotalFileCount.add(fileCount);
     shuffleTotalCount.add(shuffleCount);
-    addShuffleFallbackCounts(shuffleFallbackCounts);
+    applicationTotalCount.add(applicationCount);
+    addFallbackCounts(this.shuffleFallbackCounts, shuffleFallbackCounts);
+    addFallbackCounts(this.applicationFallbackCounts, applicationFallbackCounts);
   }
 
   public void updateAppLostMeta(String appId) {
@@ -362,7 +368,9 @@ public abstract class AbstractMetaManager implements IMetadataHandler {
                 partitionTotalWritten.sum(),
                 partitionTotalFileCount.sum(),
                 shuffleTotalCount.sum(),
+                applicationTotalCount.sum(),
                 shuffleFallbackCounts,
+                applicationFallbackCounts,
                 lostWorkers,
                 shutdownWorkers,
                 workerEventInfos,
@@ -462,7 +470,10 @@ public abstract class AbstractMetaManager implements IMetadataHandler {
       partitionTotalWritten.add(snapshotMetaInfo.getPartitionTotalWritten());
       partitionTotalFileCount.add(snapshotMetaInfo.getPartitionTotalFileCount());
       shuffleTotalCount.add(snapshotMetaInfo.getShuffleTotalCount());
-      addShuffleFallbackCounts(snapshotMetaInfo.getShuffleFallbackCountsMap());
+      applicationTotalCount.add(snapshotMetaInfo.getApplicationTotalCount());
+      addFallbackCounts(shuffleFallbackCounts, snapshotMetaInfo.getShuffleFallbackCountsMap());
+      addFallbackCounts(
+          applicationFallbackCounts, snapshotMetaInfo.getApplicationFallbackCountsMap());
 
       snapshotMetaInfo
           .getApplicationMetasMap()
@@ -503,7 +514,9 @@ public abstract class AbstractMetaManager implements IMetadataHandler {
     partitionTotalWritten.reset();
     partitionTotalFileCount.reset();
     shuffleTotalCount.reset();
+    applicationTotalCount.reset();
     shuffleFallbackCounts.clear();
+    applicationFallbackCounts.clear();
     workerEventInfos.clear();
     applicationMetas.clear();
   }
@@ -607,10 +620,10 @@ public abstract class AbstractMetaManager implements IMetadataHandler {
     return registeredAppAndShuffles.values().stream().mapToInt(Set::size).sum();
   }
 
-  private void addShuffleFallbackCounts(Map<String, Long> fallbackCounts) {
-    for (String fallbackPolicy : fallbackCounts.keySet()) {
-      shuffleFallbackCounts.compute(
-          fallbackPolicy, (k, v) -> v == null ? fallbackCounts.get(k) : v + fallbackCounts.get(k));
+  private void addFallbackCounts(Map<String, Long> fallbackCounts, Map<String, Long> counts) {
+    for (String fallbackPolicy : counts.keySet()) {
+      fallbackCounts.compute(
+          fallbackPolicy, (k, v) -> v == null ? counts.get(k) : v + counts.get(k));
     }
   }
 }

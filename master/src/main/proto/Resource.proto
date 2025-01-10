@@ -122,6 +122,8 @@ message AppHeartbeatRequest {
   required int64 fileCount = 4;
   optional int64 shuffleCount = 5;
   map<string, int64> shuffleFallbackCounts = 6;
+  optional int64 applicationCount = 7;
+  map<string, int64> applicationFallbackCounts = 8;
 }
 
 message AppLostRequest {

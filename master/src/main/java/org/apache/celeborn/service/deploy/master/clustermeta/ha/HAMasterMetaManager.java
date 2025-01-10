@@ -132,7 +132,9 @@ public class HAMasterMetaManager extends AbstractMetaManager {
       long totalWritten,
       long fileCount,
       long shuffleCount,
+      long applicationCount,
       Map<String, Long> shuffleFallbackCounts,
+      Map<String, Long> applicationFallbackCounts,
       long time,
       String requestId) {
     try {
@@ -147,7 +149,9 @@ public class HAMasterMetaManager extends AbstractMetaManager {
                       .setTotalWritten(totalWritten)
                       .setFileCount(fileCount)
                       .setShuffleCount(shuffleCount)
+                      .setApplicationCount(applicationCount)
                       .putAllShuffleFallbackCounts(shuffleFallbackCounts)
+                      .putAllApplicationFallbackCounts(applicationFallbackCounts)
                       .build())
               .build());
     } catch (CelebornRuntimeException e) {

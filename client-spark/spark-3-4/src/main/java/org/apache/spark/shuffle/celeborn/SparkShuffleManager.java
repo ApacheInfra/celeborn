@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import scala.Option;
+
 import org.apache.spark.*;
 import org.apache.spark.internal.config.package$;
 import org.apache.spark.launcher.SparkLauncher;
@@ -81,6 +83,10 @@ public class SparkShuffleManager implements ShuffleManager {
   private ShuffleClient shuffleClient;
   private volatile SortShuffleManager _sortShuffleManager;
   private final ConcurrentHashMap.KeySetView<Integer, Boolean> sortShuffleIds =
+      ConcurrentHashMap.newKeySet();
+  private final ConcurrentHashMap.KeySetView<String, Boolean> registeredApps =
+      ConcurrentHashMap.newKeySet();
+  private final ConcurrentHashMap.KeySetView<String, Boolean> fallbackApps =
       ConcurrentHashMap.newKeySet();
   private final CelebornShuffleFallbackPolicyRunner fallbackPolicyRunner;
 
@@ -161,8 +167,14 @@ public class SparkShuffleManager implements ShuffleManager {
     String appId = SparkUtils.appUniqueId(dependency.rdd().context());
     initializeLifecycleManager(appId);
 
+    if (!registeredApps.contains(appId)) {
+      registeredApps.add(appId);
+      lifecycleManager.applicationCount().increment();
+    }
     lifecycleManager.shuffleCount().increment();
-    if (fallbackPolicyRunner.applyFallbackPolicies(dependency, lifecycleManager)) {
+    Option<ShuffleFallbackPolicy> fallbackPolicyOpt =
+        fallbackPolicyRunner.getActivatedFallbackPolicy(dependency, lifecycleManager);
+    if (fallbackPolicyOpt.isDefined()) {
       if (conf.getBoolean("spark.dynamicAllocation.enabled", false)
           && !conf.getBoolean("spark.shuffle.service.enabled", false)) {
         logger.error(
@@ -174,6 +186,14 @@ public class SparkShuffleManager implements ShuffleManager {
         logger.warn("Fallback to vanilla Spark SortShuffleManager for shuffle: {}", shuffleId);
       }
       sortShuffleIds.add(shuffleId);
+      String shuffleFallbackPolicy = fallbackPolicyOpt.get().getClass().getName();
+      lifecycleManager.computeFallbackCounts(
+          lifecycleManager.shuffleFallbackCounts(), shuffleFallbackPolicy);
+      if (!fallbackApps.contains(appId)) {
+        fallbackApps.add(appId);
+        lifecycleManager.computeFallbackCounts(
+            lifecycleManager.applicationFallbackCounts(), shuffleFallbackPolicy);
+      }
       return sortShuffleManager().registerShuffle(shuffleId, dependency);
     } else {
       lifecycleManager.registerAppShuffleDeterminate(
@@ -216,6 +236,9 @@ public class SparkShuffleManager implements ShuffleManager {
 
   @Override
   public void stop() {
+    sortShuffleIds.clear();
+    registeredApps.clear();
+    fallbackApps.clear();
     if (shuffleClient != null) {
       shuffleClient.shutdown();
       ShuffleClient.reset();
