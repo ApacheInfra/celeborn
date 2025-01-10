@@ -19,30 +19,15 @@ package org.apache.spark.shuffle.celeborn;
 
 import java.io.IOException;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.LongAdder;
 
-import javax.annotation.Nullable;
-
-import scala.Option;
 import scala.Product2;
-import scala.reflect.ClassTag;
-import scala.reflect.ClassTag$;
 
-import com.google.common.annotations.VisibleForTesting;
-import org.apache.spark.Partitioner;
-import org.apache.spark.ShuffleDependency;
-import org.apache.spark.SparkEnv;
 import org.apache.spark.TaskContext;
 import org.apache.spark.annotation.Private;
-import org.apache.spark.scheduler.MapStatus;
-import org.apache.spark.serializer.SerializationStream;
-import org.apache.spark.serializer.SerializerInstance;
 import org.apache.spark.shuffle.ShuffleWriteMetricsReporter;
-import org.apache.spark.shuffle.ShuffleWriter;
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow;
 import org.apache.spark.sql.execution.UnsafeRowSerializer;
 import org.apache.spark.sql.execution.metric.SQLMetric;
-import org.apache.spark.storage.BlockManagerId;
 import org.apache.spark.unsafe.Platform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,50 +39,14 @@ import org.apache.celeborn.common.CelebornConf;
 import org.apache.celeborn.common.util.Utils;
 
 @Private
-public class HashBasedShuffleWriter<K, V, C> extends ShuffleWriter<K, V> {
+public class HashBasedShuffleWriter<K, V, C> extends BasedShuffleWriter<K, V, C> {
 
   private static final Logger logger = LoggerFactory.getLogger(HashBasedShuffleWriter.class);
 
-  private static final ClassTag<Object> OBJECT_CLASS_TAG = ClassTag$.MODULE$.Object();
-  private static final int DEFAULT_INITIAL_SER_BUFFER_SIZE = 1024 * 1024;
-
-  private final int PUSH_BUFFER_INIT_SIZE;
-  private final int PUSH_BUFFER_MAX_SIZE;
-  private final ShuffleDependency<K, V, C> dep;
-  private final Partitioner partitioner;
-  private final ShuffleWriteMetricsReporter writeMetrics;
-  private final int shuffleId;
-  private final int mapId;
-  private final int encodedAttemptId;
-  private final TaskContext taskContext;
-  private final ShuffleClient shuffleClient;
-  private final int numMappers;
-  private final int numPartitions;
-
-  @Nullable private MapStatus mapStatus;
-  private long peakMemoryUsedBytes = 0;
-
-  private final OpenByteArrayOutputStream serBuffer;
-  private final SerializationStream serOutputStream;
-
   private byte[][] sendBuffers;
   private int[] sendOffsets;
-
-  private final LongAdder[] mapStatusLengths;
-  protected long tmpRecordsWritten = 0;
-
-  private final SendBufferPool sendBufferPool;
-
-  /**
-   * Are we in the process of stopping? Because map tasks can call stop() with success = true and
-   * then call stop() with success = false if they get an exception, we want to make sure we don't
-   * try deleting files, etc. twice.
-   */
-  private volatile boolean stopping = false;
-
   private DataPusher dataPusher;
-
-  private final boolean unsafeRowFastWrite;
+  private final SendBufferPool sendBufferPool;
 
   // In order to facilitate the writing of unit test code, ShuffleClient needs to be passed in as
   // parameters. By the way, simplify the passed parameters.
@@ -110,31 +59,9 @@ public class HashBasedShuffleWriter<K, V, C> extends ShuffleWriter<K, V> {
       ShuffleWriteMetricsReporter metrics,
       SendBufferPool sendBufferPool)
       throws IOException {
-    this.mapId = taskContext.partitionId();
-    this.dep = handle.dependency();
-    this.shuffleId = shuffleId;
-    this.encodedAttemptId = SparkCommonUtils.getEncodedAttemptNumber(taskContext);
-    SerializerInstance serializer = dep.serializer().newInstance();
-    this.partitioner = dep.partitioner();
-    this.writeMetrics = metrics;
-    this.taskContext = taskContext;
-    this.numMappers = handle.numMappers();
-    this.numPartitions = dep.partitioner().numPartitions();
-    this.shuffleClient = client;
-
-    unsafeRowFastWrite = conf.clientPushUnsafeRowFastWrite();
-    serBuffer = new OpenByteArrayOutputStream(DEFAULT_INITIAL_SER_BUFFER_SIZE);
-    serOutputStream = serializer.serializeStream(serBuffer);
-
-    mapStatusLengths = new LongAdder[numPartitions];
-    for (int i = 0; i < numPartitions; i++) {
-      mapStatusLengths[i] = new LongAdder();
-    }
-
-    PUSH_BUFFER_INIT_SIZE = conf.clientPushBufferInitialSize();
-    PUSH_BUFFER_MAX_SIZE = conf.clientPushBufferMaxSize();
-
+    super(shuffleId, handle, taskContext, conf, client, metrics);
     this.sendBufferPool = sendBufferPool;
+
     sendBuffers = sendBufferPool.acquireBuffer(numPartitions);
     sendOffsets = new int[numPartitions];
 
@@ -159,42 +86,6 @@ public class HashBasedShuffleWriter<K, V, C> extends ShuffleWriter<K, V> {
   }
 
   @Override
-  public void write(scala.collection.Iterator<Product2<K, V>> records) throws IOException {
-    boolean needCleanupPusher = true;
-    try {
-      if (canUseFastWrite()) {
-        fastWrite0(records);
-      } else if (dep.mapSideCombine()) {
-        if (dep.aggregator().isEmpty()) {
-          throw new UnsupportedOperationException(
-              "When using map side combine, an aggregator must be specified.");
-        }
-        write0(dep.aggregator().get().combineValuesByKey(records, taskContext));
-      } else {
-        write0(records);
-      }
-      close();
-      needCleanupPusher = false;
-    } catch (InterruptedException e) {
-      TaskInterruptedHelper.throwTaskKillException();
-    } finally {
-      if (needCleanupPusher) {
-        cleanupPusher();
-      }
-    }
-  }
-
-  @VisibleForTesting
-  boolean canUseFastWrite() {
-    boolean keyIsPartitionId = false;
-    if (unsafeRowFastWrite && dep.serializer() instanceof UnsafeRowSerializer) {
-      // SPARK-39391 renames PartitionIdPassthrough's package
-      String partitionerClassName = partitioner.getClass().getSimpleName();
-      keyIsPartitionId = "PartitionIdPassthrough".equals(partitionerClassName);
-    }
-    return keyIsPartitionId;
-  }
-
   protected void fastWrite0(scala.collection.Iterator iterator)
       throws IOException, InterruptedException {
     final scala.collection.Iterator<Product2<Integer, UnsafeRow>> records = iterator;
@@ -238,7 +129,9 @@ public class HashBasedShuffleWriter<K, V, C> extends ShuffleWriter<K, V> {
     }
   }
 
-  private void write0(scala.collection.Iterator iterator) throws IOException, InterruptedException {
+  @Override
+  protected void write0(scala.collection.Iterator iterator)
+      throws IOException, InterruptedException {
     final scala.collection.Iterator<Product2<K, ?>> records = iterator;
 
     while (records.hasNext()) {
@@ -265,6 +158,11 @@ public class HashBasedShuffleWriter<K, V, C> extends ShuffleWriter<K, V> {
     }
   }
 
+  @Override
+  void updatePeakMemoryUsed() {
+    // do nothing, hash shuffle writer always update this used peak memory
+  }
+
   private byte[] getOrCreateBuffer(int partitionId) {
     byte[] buffer = sendBuffers[partitionId];
     if (buffer == null) {
@@ -273,23 +171,6 @@ public class HashBasedShuffleWriter<K, V, C> extends ShuffleWriter<K, V> {
       peakMemoryUsedBytes += PUSH_BUFFER_INIT_SIZE;
     }
     return buffer;
-  }
-
-  protected void pushGiantRecord(int partitionId, byte[] buffer, int numBytes) throws IOException {
-    logger.debug("Push giant record, size {}.", numBytes);
-    int bytesWritten =
-        shuffleClient.pushData(
-            shuffleId,
-            mapId,
-            encodedAttemptId,
-            partitionId,
-            buffer,
-            0,
-            numBytes,
-            numMappers,
-            numPartitions);
-    mapStatusLengths[partitionId].add(bytesWritten);
-    writeMetrics.incBytesWritten(bytesWritten);
   }
 
   private int getOrUpdateOffset(int partitionId, int serializedRecordSize)
@@ -322,7 +203,12 @@ public class HashBasedShuffleWriter<K, V, C> extends ShuffleWriter<K, V> {
     writeMetrics.incWriteTime(System.nanoTime() - start);
   }
 
-  protected void closeWrite() throws IOException {
+  @Override
+  protected void closeWrite() throws IOException, InterruptedException {
+    // here we wait for all the in-flight batches to return which sent by dataPusher thread
+    dataPusher.waitOnTermination();
+    sendBufferPool.returnPushTaskQueue(dataPusher.getAndResetIdleQueue());
+    shuffleClient.prepareForMergeData(shuffleId, mapId, encodedAttemptId);
     // merge and push residual data to reduce network traffic
     // NB: since dataPusher thread have no in-flight data at this point,
     //     we now push merged data by task thread will not introduce any contention
@@ -356,68 +242,13 @@ public class HashBasedShuffleWriter<K, V, C> extends ShuffleWriter<K, V> {
     writeMetrics.incBytesWritten(bytesWritten);
   }
 
-  private void cleanupPusher() throws IOException {
+  @Override
+  protected void cleanupPusher() throws IOException {
     try {
       dataPusher.waitOnTermination();
       sendBufferPool.returnPushTaskQueue(dataPusher.getAndResetIdleQueue());
     } catch (InterruptedException e) {
       TaskInterruptedHelper.throwTaskKillException();
     }
-  }
-
-  private void close() throws IOException, InterruptedException {
-    // here we wait for all the in-flight batches to return which sent by dataPusher thread
-    long pushMergedDataTime = System.nanoTime();
-    dataPusher.waitOnTermination();
-    sendBufferPool.returnPushTaskQueue(dataPusher.getAndResetIdleQueue());
-    shuffleClient.prepareForMergeData(shuffleId, mapId, encodedAttemptId);
-    closeWrite();
-    shuffleClient.pushMergedData(shuffleId, mapId, encodedAttemptId);
-    writeMetrics.incWriteTime(System.nanoTime() - pushMergedDataTime);
-    updateRecordsWrittenMetrics();
-
-    long waitStartTime = System.nanoTime();
-    shuffleClient.mapperEnd(shuffleId, mapId, encodedAttemptId, numMappers);
-    writeMetrics.incWriteTime(System.nanoTime() - waitStartTime);
-
-    BlockManagerId bmId = SparkEnv.get().blockManager().shuffleServerId();
-    mapStatus =
-        SparkUtils.createMapStatus(
-            bmId, SparkUtils.unwrap(mapStatusLengths), taskContext.taskAttemptId());
-  }
-
-  private void updateRecordsWrittenMetrics() {
-    writeMetrics.incRecordsWritten(tmpRecordsWritten);
-    tmpRecordsWritten = 0;
-  }
-
-  @Override
-  public Option<MapStatus> stop(boolean success) {
-    try {
-      taskContext.taskMetrics().incPeakExecutionMemory(peakMemoryUsedBytes);
-
-      if (stopping) {
-        return Option.empty();
-      } else {
-        stopping = true;
-        if (success) {
-          if (mapStatus == null) {
-            throw new IllegalStateException("Cannot call stop(true) without having called write()");
-          }
-          return Option.apply(mapStatus);
-        } else {
-          return Option.empty();
-        }
-      }
-    } finally {
-      shuffleClient.cleanup(shuffleId, mapId, encodedAttemptId);
-    }
-  }
-
-  // Added in SPARK-32917, for Spark 3.2 and above
-  @SuppressWarnings("MissingOverride")
-  public long[] getPartitionLengths() {
-    throw new UnsupportedOperationException(
-        "Celeborn is not compatible with Spark push mode, please set spark.shuffle.push.enabled to false");
   }
 }
