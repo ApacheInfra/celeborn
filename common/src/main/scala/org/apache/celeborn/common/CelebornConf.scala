@@ -520,6 +520,7 @@ class CelebornConf(loadDefaults: Boolean) extends Cloneable with Logging with Se
     new RpcTimeout(get(RPC_LOOKUP_TIMEOUT).milli, RPC_LOOKUP_TIMEOUT.key)
   def rpcAskTimeout: RpcTimeout =
     new RpcTimeout(get(RPC_ASK_TIMEOUT).milli, RPC_ASK_TIMEOUT.key)
+  def rpcTimeoutRetryWaitMs: Long = get(RPC_TIMEOUT_RETRY_WAIT)
   def rpcInMemoryBoundedInboxCapacity(): Int = {
     get(RPC_INBOX_CAPACITY)
   }
@@ -4899,6 +4900,14 @@ object CelebornConf extends Logging {
       .timeConf(TimeUnit.MILLISECONDS)
       .createWithDefaultString("3s")
 
+  val RPC_TIMEOUT_RETRY_WAIT: ConfigEntry[Long] =
+    buildConf("celeborn.rpc.retryWait")
+      .categories("network")
+      .version("0.6.0")
+      .doc("Wait time before next retry on RpcTimeoutException.")
+      .timeConf(TimeUnit.MILLISECONDS)
+      .createWithDefaultString("1s")
+
   val CLIENT_RESERVE_SLOTS_MAX_RETRIES: ConfigEntry[Int] =
     buildConf("celeborn.client.reserveSlots.maxRetries")
       .withAlternative("celeborn.slots.reserve.maxRetries")
@@ -5048,7 +5057,7 @@ object CelebornConf extends Logging {
     buildConf("celeborn.client.rpc.maxRetries")
       .categories("client")
       .version("0.3.2")
-      .doc("Max RPC retry times in LifecycleManager.")
+      .doc("Max RPC retry times in client.")
       .intConf
       .createWithDefault(3)
 
