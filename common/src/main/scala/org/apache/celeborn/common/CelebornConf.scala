@@ -828,7 +828,6 @@ class CelebornConf(loadDefaults: Boolean) extends Cloneable with Logging with Se
   def workerReplicateThreads: Int = get(WORKER_REPLICATE_THREADS)
   def workerCommitThreads: Int =
     if (hasHDFSStorage) Math.max(128, get(WORKER_COMMIT_THREADS)) else get(WORKER_COMMIT_THREADS)
-  def workerCommitFilesWaitThreads: Int = get(WORKER_COMMIT_FILES_WAIT_THREADS)
   def workerCleanThreads: Int = get(WORKER_CLEAN_THREADS)
   def workerShuffleCommitTimeout: Long = get(WORKER_SHUFFLE_COMMIT_TIMEOUT)
   def maxPartitionSizeToEstimate: Long =
@@ -3480,14 +3479,6 @@ object CelebornConf extends Logging {
       .version("0.3.0")
       .doc("Thread number of worker to commit shuffle data files asynchronously. " +
         "It's recommended to set at least `128` when `HDFS` is enabled in `celeborn.storage.availableTypes`.")
-      .intConf
-      .createWithDefault(32)
-
-  val WORKER_COMMIT_FILES_WAIT_THREADS: ConfigEntry[Int] =
-    buildConf("celeborn.worker.commitFiles.wait.threads")
-      .categories("worker")
-      .version("0.5.0")
-      .doc("Thread number of worker to wait for commit shuffle data files to finish.")
       .intConf
       .createWithDefault(32)
 

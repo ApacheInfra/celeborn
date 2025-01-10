@@ -38,7 +38,7 @@ import org.apache.celeborn.common.protocol.{PartitionLocation, PartitionSplitMod
 import org.apache.celeborn.common.protocol.message.ControlMessages._
 import org.apache.celeborn.common.protocol.message.StatusCode
 import org.apache.celeborn.common.rpc._
-import org.apache.celeborn.common.util.{JavaUtils, Utils}
+import org.apache.celeborn.common.util.{JavaUtils, ThreadUtils, Utils}
 import org.apache.celeborn.service.deploy.worker.storage.{MapPartitionDataWriter, PartitionDataWriter, StorageManager}
 
 private[deploy] class Controller(
@@ -52,13 +52,15 @@ private[deploy] class Controller(
   var shuffleMapperAttempts: ConcurrentHashMap[String, AtomicIntegerArray] = _
   // shuffleKey -> (epoch -> CommitInfo)
   var shuffleCommitInfos: ConcurrentHashMap[String, ConcurrentHashMap[Long, CommitInfo]] = _
+  var shuffleCommitTime: ConcurrentHashMap[String, ConcurrentHashMap[Long, (Int, RpcCallContext)]] =
+    _
   var shufflePartitionType: ConcurrentHashMap[String, PartitionType] = _
   var shufflePushDataTimeout: ConcurrentHashMap[String, Long] = _
   var workerInfo: WorkerInfo = _
   var partitionLocationInfo: WorkerPartitionLocationInfo = _
   var timer: HashedWheelTimer = _
   var commitThreadPool: ThreadPoolExecutor = _
-  var waitThreadPool: ThreadPoolExecutor = _
+  var commitFinishedChecker: ScheduledExecutorService = _
   var asyncReplyPool: ScheduledExecutorService = _
   val minPartitionSizeToEstimate = conf.minPartitionSizeToEstimate
   var shutdown: AtomicBoolean = _
@@ -71,13 +73,24 @@ private[deploy] class Controller(
     shufflePushDataTimeout = worker.shufflePushDataTimeout
     shuffleMapperAttempts = worker.shuffleMapperAttempts
     shuffleCommitInfos = worker.shuffleCommitInfos
+    shuffleCommitTime = worker.shuffleCommitTime
     workerInfo = worker.workerInfo
     partitionLocationInfo = worker.partitionLocationInfo
     timer = worker.timer
     commitThreadPool = worker.commitThreadPool
-    waitThreadPool = worker.waitThreadPool
     asyncReplyPool = worker.asyncReplyPool
     shutdown = worker.shutdown
+
+    commitFinishedChecker = worker.commitFinishedChecker
+    commitFinishedChecker.scheduleWithFixedDelay(
+      new Runnable {
+        override def run(): Unit = {
+          checkCommitTimeout(shuffleCommitTime)
+        }
+      },
+      0,
+      100,
+      TimeUnit.MILLISECONDS)
   }
 
   override def receiveAndReply(context: RpcCallContext): PartialFunction[Any, Unit] = {
@@ -412,25 +425,20 @@ private[deploy] class Controller(
 
     val shuffleCommitTimeout = conf.workerShuffleCommitTimeout
 
-    shuffleCommitInfos.putIfAbsent(shuffleKey, JavaUtils.newConcurrentHashMap[Long, CommitInfo]())
+    shuffleCommitInfos.putIfAbsent(
+      shuffleKey,
+      JavaUtils.newConcurrentHashMap[Long, CommitInfo]())
     val epochCommitMap = shuffleCommitInfos.get(shuffleKey)
-    epochCommitMap.putIfAbsent(epoch, new CommitInfo(null, CommitInfo.COMMIT_NOTSTARTED))
-    val commitInfo = epochCommitMap.get(epoch)
 
-    def waitForCommitFinish(): Unit = {
-      val delta = 100
-      var times = 0
-      while (delta * times < shuffleCommitTimeout) {
-        commitInfo.synchronized {
-          if (commitInfo.status == CommitInfo.COMMIT_FINISHED) {
-            context.reply(commitInfo.response)
-            return
-          }
-        }
-        Thread.sleep(delta)
-        times += 1
-      }
-    }
+    // to store the primaryIds and replicaIds
+    val response = CommitFilesResponse(
+      null,
+      List.empty.asJava,
+      List.empty.asJava,
+      primaryIds,
+      replicaIds)
+    epochCommitMap.putIfAbsent(epoch, new CommitInfo(response, CommitInfo.COMMIT_NOTSTARTED))
+    val commitInfo = epochCommitMap.get(epoch)
 
     commitInfo.synchronized {
       if (commitInfo.status == CommitInfo.COMMIT_FINISHED) {
@@ -439,12 +447,14 @@ private[deploy] class Controller(
         return
       } else if (commitInfo.status == CommitInfo.COMMIT_INPROCESS) {
         logInfo(s"$shuffleKey CommitFiles inprogress, wait for finish")
-        // should not use commitThreadPool in case of block by commit files.
-        waitThreadPool.submit(new Runnable {
-          override def run(): Unit = {
-            waitForCommitFinish()
-          }
-        })
+        // replace ThreadPool to avoid blocking
+        shuffleCommitTime.putIfAbsent(
+          shuffleKey,
+          JavaUtils.newConcurrentHashMap[Long, (Int, RpcCallContext)]())
+        val epochWaitTimeMap = shuffleCommitTime.get(shuffleKey)
+        epochWaitTimeMap.synchronized {
+          epochWaitTimeMap.putIfAbsent(epoch, (0, context))
+        }
         return
       } else {
         logInfo(s"Start commitFiles for $shuffleKey")
@@ -727,6 +737,44 @@ private[deploy] class Controller(
           StatusCode.PARTIAL_SUCCESS,
           failedPrimaries,
           failedReplicas))
+    }
+  }
+
+  private def checkCommitTimeout(shuffleCommitTime: ConcurrentHashMap[
+    String,
+    ConcurrentHashMap[Long, (Int, RpcCallContext)]]): Unit = {
+    val delta = 100
+    val shuffleCommitTimeout = conf.workerShuffleCommitTimeout
+
+    shuffleCommitTime.asScala.foreach {
+      case (shuffleKey, epochWaitTimeMap) =>
+        epochWaitTimeMap.synchronized {
+          epochWaitTimeMap.asScala.foreach { case (epoch, (waitTime, context)) =>
+            val commitInfo = shuffleCommitInfos.get(shuffleKey).get(epoch)
+            commitInfo.synchronized {
+              if (waitTime * delta < shuffleCommitTimeout) {
+                if (commitInfo.status == CommitInfo.COMMIT_FINISHED) {
+                  context.reply(commitInfo.response)
+                  epochWaitTimeMap.remove(epoch)
+                } else {
+                  shuffleCommitTime.get(shuffleKey).put(epoch, (waitTime + 1, context))
+                }
+              } else {
+                val replyResponse = CommitFilesResponse(
+                  StatusCode.COMMIT_FILE_EXCEPTION,
+                  List.empty.asJava,
+                  List.empty.asJava,
+                  commitInfo.response.failedPrimaryIds,
+                  commitInfo.response.failedReplicaIds)
+                shuffleCommitInfos.get(shuffleKey).put(
+                  epoch,
+                  new CommitInfo(replyResponse, CommitInfo.COMMIT_FINISHED))
+                context.reply(replyResponse)
+                epochWaitTimeMap.remove(epoch)
+              }
+            }
+          }
+        }
     }
   }
 
