@@ -110,6 +110,7 @@ trait ReadWriteTestBase extends AnyFunSuite
       0,
       0,
       0,
+      0,
       Integer.MAX_VALUE,
       null,
       null,

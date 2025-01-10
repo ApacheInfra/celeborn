@@ -391,6 +391,7 @@ message PbGetShuffleIdResponse {
 message PbReportShuffleFetchFailure {
   int32 appShuffleId = 1;
   int32 shuffleId = 2;
+  int64 taskId = 3;
 }
 
 message PbReportShuffleFetchFailureResponse {

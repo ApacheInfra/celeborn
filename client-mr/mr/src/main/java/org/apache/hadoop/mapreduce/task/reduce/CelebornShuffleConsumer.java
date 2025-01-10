@@ -155,6 +155,7 @@ public class CelebornShuffleConsumer<K, V>
             reduceId.getTaskID().getId(),
             reduceId.getId(),
             0,
+            0,
             Integer.MAX_VALUE,
             metricsCallback);
     CelebornShuffleFetcher<K, V> shuffleReader =

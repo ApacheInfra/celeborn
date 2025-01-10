@@ -17,22 +17,19 @@
 
 package org.apache.celeborn.tests.spark
 
-import java.io.{File, IOException}
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 
 import org.apache.spark.{BarrierTaskContext, ShuffleDependency, SparkConf, SparkContextHelper, SparkException, TaskContext}
 import org.apache.spark.celeborn.ExceptionMakerHelper
 import org.apache.spark.rdd.RDD
-import org.apache.spark.shuffle.ShuffleHandle
-import org.apache.spark.shuffle.celeborn.{CelebornShuffleHandle, ShuffleManagerHook, SparkShuffleManager, SparkUtils, TestCelebornShuffleManager}
+import org.apache.spark.shuffle.celeborn.{SparkShuffleManager, SparkUtils, TestCelebornShuffleManager}
 import org.apache.spark.sql.SparkSession
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.funsuite.AnyFunSuite
 
 import org.apache.celeborn.client.ShuffleClient
-import org.apache.celeborn.common.CelebornConf
 import org.apache.celeborn.common.protocol.ShuffleMode
-import org.apache.celeborn.service.deploy.worker.Worker
 
 class CelebornFetchFailureSuite extends AnyFunSuite
   with SparkTestBase
@@ -44,57 +41,6 @@ class CelebornFetchFailureSuite extends AnyFunSuite
 
   override def afterEach(): Unit = {
     System.gc()
-  }
-
-  var workerDirs: Seq[String] = Seq.empty
-
-  override def createWorker(map: Map[String, String]): Worker = {
-    val storageDir = createTmpDir()
-    this.synchronized {
-      workerDirs = workerDirs :+ storageDir
-    }
-    super.createWorker(map, storageDir)
-  }
-
-  class ShuffleReaderGetHook(conf: CelebornConf) extends ShuffleManagerHook {
-    var executed: AtomicBoolean = new AtomicBoolean(false)
-    val lock = new Object
-
-    override def exec(
-        handle: ShuffleHandle,
-        startPartition: Int,
-        endPartition: Int,
-        context: TaskContext): Unit = {
-      if (executed.get() == true) return
-
-      lock.synchronized {
-        handle match {
-          case h: CelebornShuffleHandle[_, _, _] => {
-            val appUniqueId = h.appUniqueId
-            val shuffleClient = ShuffleClient.get(
-              h.appUniqueId,
-              h.lifecycleManagerHost,
-              h.lifecycleManagerPort,
-              conf,
-              h.userIdentifier,
-              h.extension)
-            val celebornShuffleId = SparkUtils.celebornShuffleId(shuffleClient, h, context, false)
-            val allFiles = workerDirs.map(dir => {
-              new File(s"$dir/celeborn-worker/shuffle_data/$appUniqueId/$celebornShuffleId")
-            })
-            val datafile = allFiles.filter(_.exists())
-              .flatMap(_.listFiles().iterator).headOption
-            datafile match {
-              case Some(file) => file.delete()
-              case None => throw new RuntimeException("unexpected, there must be some data file" +
-                  s" under ${workerDirs.mkString(",")}")
-            }
-          }
-          case _ => throw new RuntimeException("unexpected, only support RssShuffleHandle here")
-        }
-        executed.set(true)
-      }
-    }
   }
 
   test("celeborn spark integration test - Fetch Failure") {
@@ -111,7 +57,7 @@ class CelebornFetchFailureSuite extends AnyFunSuite
         .getOrCreate()
 
       val celebornConf = SparkUtils.fromSparkConf(sparkSession.sparkContext.getConf)
-      val hook = new ShuffleReaderGetHook(celebornConf)
+      val hook = new ShuffleReaderFetchFailureGetHook(celebornConf)
       TestCelebornShuffleManager.registerReaderGetHook(hook)
 
       val value = Range(1, 10000).mkString(",")
@@ -184,7 +130,7 @@ class CelebornFetchFailureSuite extends AnyFunSuite
         .getOrCreate()
 
       val celebornConf = SparkUtils.fromSparkConf(sparkSession.sparkContext.getConf)
-      val hook = new ShuffleReaderGetHook(celebornConf)
+      val hook = new ShuffleReaderFetchFailureGetHook(celebornConf)
       TestCelebornShuffleManager.registerReaderGetHook(hook)
 
       import sparkSession.implicits._
@@ -215,7 +161,7 @@ class CelebornFetchFailureSuite extends AnyFunSuite
         .getOrCreate()
 
       val celebornConf = SparkUtils.fromSparkConf(sparkSession.sparkContext.getConf)
-      val hook = new ShuffleReaderGetHook(celebornConf)
+      val hook = new ShuffleReaderFetchFailureGetHook(celebornConf)
       TestCelebornShuffleManager.registerReaderGetHook(hook)
 
       val sc = sparkSession.sparkContext
@@ -255,7 +201,7 @@ class CelebornFetchFailureSuite extends AnyFunSuite
         .getOrCreate()
 
       val celebornConf = SparkUtils.fromSparkConf(sparkSession.sparkContext.getConf)
-      val hook = new ShuffleReaderGetHook(celebornConf)
+      val hook = new ShuffleReaderFetchFailureGetHook(celebornConf)
       TestCelebornShuffleManager.registerReaderGetHook(hook)
 
       val sc = sparkSession.sparkContext

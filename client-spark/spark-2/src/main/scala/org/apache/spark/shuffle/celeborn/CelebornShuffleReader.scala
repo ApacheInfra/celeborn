@@ -98,6 +98,7 @@ class CelebornShuffleReader[K, C](
                 shuffleId,
                 partitionId,
                 encodedAttemptId,
+                context.taskAttemptId(),
                 startMapIndex,
                 endMapIndex,
                 metricsCallback)
@@ -124,7 +125,10 @@ class CelebornShuffleReader[K, C](
             exceptionRef.get() match {
               case ce @ (_: CelebornIOException | _: PartitionUnRetryAbleException) =>
                 if (handle.throwsFetchFailure &&
-                  shuffleClient.reportShuffleFetchFailure(handle.shuffleId, shuffleId)) {
+                  shuffleClient.reportShuffleFetchFailure(
+                    handle.shuffleId,
+                    shuffleId,
+                    context.taskAttemptId())) {
                   throw new FetchFailedException(
                     null,
                     handle.shuffleId,
@@ -158,7 +162,10 @@ class CelebornShuffleReader[K, C](
       } catch {
         case e @ (_: CelebornIOException | _: PartitionUnRetryAbleException) =>
           if (handle.throwsFetchFailure &&
-            shuffleClient.reportShuffleFetchFailure(handle.shuffleId, shuffleId)) {
+            shuffleClient.reportShuffleFetchFailure(
+              handle.shuffleId,
+              shuffleId,
+              context.taskAttemptId())) {
             throw new FetchFailedException(
               null,
               handle.shuffleId,

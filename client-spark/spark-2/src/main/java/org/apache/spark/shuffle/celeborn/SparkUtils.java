@@ -20,12 +20,19 @@ package org.apache.spark.shuffle.celeborn;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.stream.Collectors;
 
 import scala.Option;
 import scala.Some;
 import scala.Tuple2;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.spark.BarrierTaskContext;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
@@ -35,6 +42,10 @@ import org.apache.spark.scheduler.DAGScheduler;
 import org.apache.spark.scheduler.MapStatus;
 import org.apache.spark.scheduler.MapStatus$;
 import org.apache.spark.scheduler.ShuffleMapStage;
+import org.apache.spark.scheduler.SparkListener;
+import org.apache.spark.scheduler.TaskInfo;
+import org.apache.spark.scheduler.TaskSchedulerImpl;
+import org.apache.spark.scheduler.TaskSetManager;
 import org.apache.spark.sql.execution.UnsafeRowSerializer;
 import org.apache.spark.sql.execution.metric.SQLMetric;
 import org.apache.spark.storage.BlockManagerId;
@@ -43,6 +54,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.celeborn.client.ShuffleClient;
 import org.apache.celeborn.common.CelebornConf;
+import org.apache.celeborn.common.util.JavaUtils;
 import org.apache.celeborn.common.util.Utils;
 import org.apache.celeborn.reflect.DynFields;
 
@@ -201,6 +213,137 @@ public class SparkUtils {
       }
     } else {
       logger.error("Can not get active SparkContext, skip cancelShuffle.");
+    }
+  }
+
+  private static final DynFields.UnboundField<ConcurrentHashMap<Long, TaskSetManager>>
+      TASK_ID_TO_TASK_SET_MANAGER_FIELD =
+          DynFields.builder()
+              .hiddenImpl(TaskSchedulerImpl.class, "taskIdToTaskSetManager")
+              .defaultAlwaysNull()
+              .build();
+  private static final DynFields.UnboundField<scala.collection.mutable.HashMap<Long, TaskInfo>>
+      TASK_INFOS_FIELD =
+          DynFields.builder()
+              .hiddenImpl(TaskSetManager.class, "taskInfos")
+              .defaultAlwaysNull()
+              .build();
+
+  /**
+   * TaskSetManager - it is not designed to be used outside the spark scheduler. Please be careful.
+   */
+  @VisibleForTesting
+  protected static TaskSetManager getTaskSetManager(TaskSchedulerImpl taskScheduler, long taskId) {
+    synchronized (taskScheduler) {
+      ConcurrentHashMap<Long, TaskSetManager> taskIdToTaskSetManager =
+          TASK_ID_TO_TASK_SET_MANAGER_FIELD.bind(taskScheduler).get();
+      return taskIdToTaskSetManager.get(taskId);
+    }
+  }
+
+  @VisibleForTesting
+  protected static Tuple2<TaskInfo, List<TaskInfo>> getTaskAttempts(
+      TaskSetManager taskSetManager, long taskId) {
+    if (taskSetManager != null) {
+      scala.Option<TaskInfo> taskInfoOption =
+          TASK_INFOS_FIELD.bind(taskSetManager).get().get(taskId);
+      if (taskInfoOption.isDefined()) {
+        TaskInfo taskInfo = taskInfoOption.get();
+        List<TaskInfo> taskAttempts =
+            scala.collection.JavaConverters.asJavaCollectionConverter(
+                    taskSetManager.taskAttempts()[taskInfo.index()])
+                .asJavaCollection().stream()
+                .collect(Collectors.toList());
+        return Tuple2.apply(taskInfo, taskAttempts);
+      } else {
+        logger.error("Can not get TaskInfo for taskId: {}", taskId);
+        return null;
+      }
+    } else {
+      logger.error("Can not get TaskSetManager for taskId: {}", taskId);
+      return null;
+    }
+  }
+
+  protected static Map<String, Set<Long>> reportedStageShuffleFetchFailureTaskIds =
+      JavaUtils.newConcurrentHashMap();
+
+  protected static void removeStageReportedShuffleFetchFailureTaskIds(
+      int stageId, int stageAttemptId) {
+    reportedStageShuffleFetchFailureTaskIds.remove(stageId + "-" + stageAttemptId);
+  }
+
+  /**
+   * Only used to check for the shuffle fetch failure task whether another attempt is running or
+   * successful. If another attempt(excluding the reported shuffle fetch failure tasks in current
+   * stage) is running or successful, return true. Otherwise, return false.
+   */
+  public static boolean taskAnotherAttemptRunningOrSuccessful(long taskId) {
+    SparkContext sparkContext = SparkContext$.MODULE$.getActive().getOrElse(null);
+    if (sparkContext == null) {
+      logger.error("Can not get active SparkContext.");
+      return false;
+    }
+    TaskSchedulerImpl taskScheduler = (TaskSchedulerImpl) sparkContext.taskScheduler();
+    synchronized (taskScheduler) {
+      TaskSetManager taskSetManager = getTaskSetManager(taskScheduler, taskId);
+      if (taskSetManager != null) {
+        int stageId = taskSetManager.stageId();
+        int stageAttemptId = taskSetManager.taskSet().stageAttemptId();
+        String stageUniqId = stageId + "-" + stageAttemptId;
+        Set<Long> reportedStageTaskIds =
+            reportedStageShuffleFetchFailureTaskIds.computeIfAbsent(
+                stageUniqId, k -> new HashSet<>());
+        reportedStageTaskIds.add(taskId);
+
+        Tuple2<TaskInfo, List<TaskInfo>> taskAttempts = getTaskAttempts(taskSetManager, taskId);
+
+        if (taskAttempts == null) return false;
+
+        TaskInfo taskInfo = taskAttempts._1();
+        for (TaskInfo ti : taskAttempts._2()) {
+          if (ti.taskId() != taskId) {
+            if (reportedStageTaskIds.contains(ti.taskId())) {
+              logger.info(
+                  "StageId={} index={} taskId={} attempt={} another attempt {} has reported shuffle fetch failure, ignore it.",
+                  stageId,
+                  taskInfo.index(),
+                  taskId,
+                  taskInfo.attemptNumber(),
+                  ti.attemptNumber());
+            } else if (ti.successful()) {
+              logger.info(
+                  "StageId={} index={} taskId={} attempt={} another attempt {} is successful.",
+                  stageId,
+                  taskInfo.index(),
+                  taskId,
+                  taskInfo.attemptNumber(),
+                  ti.attemptNumber());
+              return true;
+            } else if (ti.running()) {
+              logger.info(
+                  "StageId={} index={} taskId={} attempt={} another attempt {} is running.",
+                  stageId,
+                  taskInfo.index(),
+                  taskId,
+                  taskInfo.attemptNumber(),
+                  ti.attemptNumber());
+              return true;
+            }
+          }
+        }
+        return false;
+      } else {
+        logger.error("Can not get TaskSetManager for taskId: {}", taskId);
+        return false;
+      }
+    }
+  }
+
+  public static void addSparkListener(SparkListener listener) {
+    SparkContext sparkContext = SparkContext$.MODULE$.getActive().getOrElse(null);
+    if (sparkContext != null) {
+      sparkContext.addSparkListener(listener);
     }
   }
 }

@@ -130,6 +130,7 @@ public class DummyShuffleClient extends ShuffleClient {
       int appShuffleId,
       int partitionId,
       int attemptNumber,
+      long taskId,
       int startMapIndex,
       int endMapIndex,
       ExceptionMaker exceptionMaker,
@@ -179,7 +180,7 @@ public class DummyShuffleClient extends ShuffleClient {
   }
 
   @Override
-  public boolean reportShuffleFetchFailure(int appShuffleId, int shuffleId) {
+  public boolean reportShuffleFetchFailure(int appShuffleId, int shuffleId, long taskId) {
     return true;
   }
 

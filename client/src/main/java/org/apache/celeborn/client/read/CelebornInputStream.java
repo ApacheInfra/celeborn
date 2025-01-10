@@ -55,6 +55,7 @@ public abstract class CelebornInputStream extends InputStream {
       ArrayList<PbStreamHandler> streamHandlers,
       int[] attempts,
       int attemptNumber,
+      long taskId,
       int startMapIndex,
       int endMapIndex,
       ConcurrentHashMap<String, Long> fetchExcludedWorkers,
@@ -76,6 +77,7 @@ public abstract class CelebornInputStream extends InputStream {
           streamHandlers,
           attempts,
           attemptNumber,
+          taskId,
           startMapIndex,
           endMapIndex,
           fetchExcludedWorkers,
@@ -129,6 +131,7 @@ public abstract class CelebornInputStream extends InputStream {
     private ArrayList<PbStreamHandler> streamHandlers;
     private int[] attempts;
     private final int attemptNumber;
+    private final long taskId;
     private final int startMapIndex;
     private final int endMapIndex;
 
@@ -178,6 +181,7 @@ public abstract class CelebornInputStream extends InputStream {
         ArrayList<PbStreamHandler> streamHandlers,
         int[] attempts,
         int attemptNumber,
+        long taskId,
         int startMapIndex,
         int endMapIndex,
         ConcurrentHashMap<String, Long> fetchExcludedWorkers,
@@ -197,6 +201,7 @@ public abstract class CelebornInputStream extends InputStream {
       }
       this.attempts = attempts;
       this.attemptNumber = attemptNumber;
+      this.taskId = taskId;
       this.startMapIndex = startMapIndex;
       this.endMapIndex = endMapIndex;
       this.rangeReadFilter = conf.shuffleRangeReadFilterEnabled();
@@ -654,7 +659,7 @@ public abstract class CelebornInputStream extends InputStream {
           ioe = new IOException(e);
         }
         if (exceptionMaker != null) {
-          if (shuffleClient.reportShuffleFetchFailure(appShuffleId, shuffleId)) {
+          if (shuffleClient.reportShuffleFetchFailure(appShuffleId, shuffleId, taskId)) {
             /*
              * [[ExceptionMaker.makeException]], for spark applications with celeborn.client.spark.fetch.throwsFetchFailure enabled will result in creating
              * a FetchFailedException; and that will make the TaskContext as failed with shuffle fetch issues - see SPARK-19276 for more.

@@ -224,6 +224,7 @@ public abstract class ShuffleClient {
       int shuffleId,
       int partitionId,
       int attemptNumber,
+      long taskId,
       int startMapIndex,
       int endMapIndex,
       MetricsCallback metricsCallback)
@@ -233,6 +234,7 @@ public abstract class ShuffleClient {
         shuffleId,
         partitionId,
         attemptNumber,
+        taskId,
         startMapIndex,
         endMapIndex,
         null,
@@ -247,6 +249,7 @@ public abstract class ShuffleClient {
       int appShuffleId,
       int partitionId,
       int attemptNumber,
+      long taskId,
       int startMapIndex,
       int endMapIndex,
       ExceptionMaker exceptionMaker,
@@ -276,7 +279,7 @@ public abstract class ShuffleClient {
    * cleanup for spark app. It must be a sync call and make sure the cleanup is done, otherwise,
    * incorrect shuffle data can be fetched in re-run tasks
    */
-  public abstract boolean reportShuffleFetchFailure(int appShuffleId, int shuffleId);
+  public abstract boolean reportShuffleFetchFailure(int appShuffleId, int shuffleId, long taskId);
 
   /**
    * Report barrier task failure. When any barrier task fails, all (shuffle) output for that stage
