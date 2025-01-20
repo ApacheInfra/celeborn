@@ -33,7 +33,7 @@ abstract class RpcEndpointRef(conf: CelebornConf)
   extends Serializable with Logging {
 
   private[this] val defaultAskTimeout = conf.rpcAskTimeout
-  private[celeborn] val waitTimeBound = conf.rpcTimeoutRetryWaitMs.toInt
+  private[this] val defaultRetryWait = conf.rpcRetryWaitMs
 
   /**
    * return the address for the [[RpcEndpointRef]]
@@ -104,8 +104,8 @@ abstract class RpcEndpointRef(conf: CelebornConf)
    * @tparam T type of the reply message
    * @return the reply message from the corresponding [[RpcEndpoint]]
    */
-  def askSync[T: ClassTag](message: Any, retryCount: Int): T =
-    askSync(message, defaultAskTimeout, retryCount)
+  def askSync[T: ClassTag](message: Any, retryCount: Int, retryWait: Long = defaultRetryWait): T =
+    askSync(message, defaultAskTimeout, retryCount, retryWait)
 
   /**
    * Send a message to the corresponding [[RpcEndpoint.receiveAndReply]] and get its result within a
@@ -119,7 +119,11 @@ abstract class RpcEndpointRef(conf: CelebornConf)
    * @tparam T type of the reply message
    * @return the reply message from the corresponding [[RpcEndpoint]]
    */
-  def askSync[T: ClassTag](message: Any, timeout: RpcTimeout, retryCount: Int): T = {
+  def askSync[T: ClassTag](
+      message: Any,
+      timeout: RpcTimeout,
+      retryCount: Int,
+      retryWait: Long): T = {
     var numRetries = retryCount
     while (numRetries > 0) {
       numRetries -= 1
@@ -130,7 +134,7 @@ abstract class RpcEndpointRef(conf: CelebornConf)
         case e: RpcTimeoutException =>
           if (numRetries > 0) {
             val random = new Random
-            val retryWaitMs = random.nextInt(waitTimeBound)
+            val retryWaitMs = random.nextInt(retryWait.toInt)
             try {
               TimeUnit.MILLISECONDS.sleep(retryWaitMs)
             } catch {

@@ -106,7 +106,7 @@ object RpcEnv {
 abstract class RpcEnv(config: RpcEnvConfig) {
 
   private[celeborn] val defaultLookupTimeout = config.conf.rpcLookupTimeout
-  private[celeborn] val waitTimeBound = config.conf.rpcTimeoutRetryWaitMs.toInt
+  private[celeborn] val defaultRetryWait = config.conf.rpcRetryWaitMs
 
   /**
    * Return RpcEndpointRef of the registered [[RpcEndpoint]]. Will be used to implement
@@ -152,7 +152,8 @@ abstract class RpcEnv(config: RpcEnvConfig) {
   def setupEndpointRef(
       address: RpcAddress,
       endpointName: String,
-      retryCount: Int): RpcEndpointRef = {
+      retryCount: Int,
+      retryWait: Long = defaultRetryWait): RpcEndpointRef = {
     var numRetries = retryCount
     while (numRetries > 0) {
       numRetries -= 1
@@ -162,7 +163,7 @@ abstract class RpcEnv(config: RpcEnvConfig) {
         case e: RpcTimeoutException =>
           if (numRetries > 0) {
             val random = new Random
-            val retryWaitMs = random.nextInt(waitTimeBound)
+            val retryWaitMs = random.nextInt(retryWait.toInt)
             try {
               TimeUnit.MILLISECONDS.sleep(retryWaitMs)
             } catch {

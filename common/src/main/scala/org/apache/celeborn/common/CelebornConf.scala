@@ -520,7 +520,7 @@ class CelebornConf(loadDefaults: Boolean) extends Cloneable with Logging with Se
     new RpcTimeout(get(RPC_LOOKUP_TIMEOUT).milli, RPC_LOOKUP_TIMEOUT.key)
   def rpcAskTimeout: RpcTimeout =
     new RpcTimeout(get(RPC_ASK_TIMEOUT).milli, RPC_ASK_TIMEOUT.key)
-  def rpcTimeoutRetryWaitMs: Long = get(RPC_TIMEOUT_RETRY_WAIT)
+  def rpcRetryWaitMs: Long = get(RPC_RETRY_WAIT)
   def rpcInMemoryBoundedInboxCapacity(): Int = {
     get(RPC_INBOX_CAPACITY)
   }
@@ -1012,6 +1012,7 @@ class CelebornConf(loadDefaults: Boolean) extends Cloneable with Logging with Se
   def clientRpcCacheExpireTime: Long = get(CLIENT_RPC_CACHE_EXPIRE_TIME)
   def clientRpcSharedThreads: Int = get(CLIENT_RPC_SHARED_THREADS)
   def clientRpcMaxRetries: Int = get(CLIENT_RPC_MAX_RETIRES)
+  def clientRpcRetryWait: Long = get(CLIENT_RPC_RETRY_WAIT)
   def pushDataTimeoutMs: Long = get(CLIENT_PUSH_DATA_TIMEOUT)
   def clientPushLimitStrategy: String = get(CLIENT_PUSH_LIMIT_STRATEGY)
   def clientPushSlowStartInitialSleepTime: Long = get(CLIENT_PUSH_SLOW_START_INITIAL_SLEEP_TIME)
@@ -1867,6 +1868,14 @@ object CelebornConf extends Logging {
         "It's recommended to set at least `240s` when `HDFS` is enabled in `celeborn.storage.availableTypes`")
       .timeConf(TimeUnit.MILLISECONDS)
       .createWithDefaultString("60s")
+
+  val RPC_RETRY_WAIT: ConfigEntry[Long] =
+    buildConf("celeborn.rpc.retryWait")
+      .categories("network")
+      .version("0.6.0")
+      .doc("Time to wait before next retry on RpcTimeoutException.")
+      .timeConf(TimeUnit.MILLISECONDS)
+      .createWithDefaultString("1s")
 
   val RPC_DISPATCHER_THREADS: ConfigEntry[Int] =
     buildConf("celeborn.rpc.dispatcher.threads")
@@ -4885,11 +4894,11 @@ object CelebornConf extends Logging {
       .timeConf(TimeUnit.MILLISECONDS)
       .createWithDefaultString("3s")
 
-  val RPC_TIMEOUT_RETRY_WAIT: ConfigEntry[Long] =
-    buildConf("celeborn.rpc.retryWait")
-      .categories("network")
+  val CLIENT_RPC_RETRY_WAIT: ConfigEntry[Long] =
+    buildConf("celeborn.client.rpc.retryWait")
+      .categories("client")
       .version("0.6.0")
-      .doc("Wait time before next retry on RpcTimeoutException.")
+      .doc("Client-specified time to wait before next retry on RpcTimeoutException.")
       .timeConf(TimeUnit.MILLISECONDS)
       .createWithDefaultString("1s")
 

@@ -249,7 +249,7 @@ public class ShuffleClientSuiteJ {
                 RegisterShuffleResponse$.MODULE$.apply(
                     statusCode, new PartitionLocation[] {primaryLocation}));
 
-    when(endpointRef.askSync(any(), any(), any(Integer.class), any()))
+    when(endpointRef.askSync(any(), any(), any(Integer.class), any(Long.class), any()))
         .thenAnswer(
             t ->
                 RegisterShuffleResponse$.MODULE$.apply(
