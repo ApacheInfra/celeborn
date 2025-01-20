@@ -268,8 +268,16 @@ private[celeborn] class Master(
     statusSystem.shuffleTotalCount.sum()
   }
 
+  masterSource.addGauge(MasterSource.APPLICATION_TOTAL_COUNT) { () =>
+    statusSystem.applicationTotalCount.sum()
+  }
+
   masterSource.addGauge(MasterSource.SHUFFLE_FALLBACK_COUNT) { () =>
     statusSystem.shuffleFallbackCounts.values().asScala.map(_.longValue()).sum
+  }
+
+  masterSource.addGauge(MasterSource.APPLICATION_FALLBACK_COUNT) { () =>
+    statusSystem.applicationFallbackCounts.values().asScala.map(_.longValue()).sum
   }
 
   masterSource.addGauge(MasterSource.DEVICE_CELEBORN_TOTAL_CAPACITY) { () =>
@@ -408,8 +416,10 @@ private[celeborn] class Master(
           appId,
           totalWritten,
           fileCount,
-          shuffleFallbackCount,
+          shuffleCount,
+          applicationCount,
           shuffleFallbackCounts,
+          applicationFallbackCounts,
           needCheckedWorkerList,
           requestId,
           shouldResponse) =>
@@ -422,8 +432,10 @@ private[celeborn] class Master(
           appId,
           totalWritten,
           fileCount,
-          shuffleFallbackCount,
+          shuffleCount,
+          applicationCount,
           shuffleFallbackCounts,
+          applicationFallbackCounts,
           needCheckedWorkerList,
           requestId,
           shouldResponse))
@@ -1117,7 +1129,9 @@ private[celeborn] class Master(
       totalWritten: Long,
       fileCount: Long,
       shuffleCount: Long,
+      applicationCount: Long,
       shuffleFallbackCounts: util.Map[String, java.lang.Long],
+      applicationFallbackCounts: util.Map[String, java.lang.Long],
       needCheckedWorkerList: util.List[WorkerInfo],
       requestId: String,
       shouldResponse: Boolean): Unit = {
@@ -1126,7 +1140,9 @@ private[celeborn] class Master(
       totalWritten,
       fileCount,
       shuffleCount,
+      applicationCount,
       shuffleFallbackCounts,
+      applicationFallbackCounts,
       System.currentTimeMillis(),
       requestId)
     gaugeShuffleFallbackCounts()

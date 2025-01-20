@@ -17,6 +17,7 @@
 
 package org.apache.spark.shuffle.celeborn
 
+import java.util.concurrent.ConcurrentHashMap
 import java.util.function.BiFunction
 
 import scala.collection.JavaConverters._
@@ -44,19 +45,27 @@ class CelebornShuffleFallbackPolicyRunner(conf: CelebornConf) extends Logging {
         throw new CelebornIOException(
           "Fallback to spark built-in shuffle implementation is prohibited.")
       } else {
-        lifecycleManager.shuffleFallbackCounts.compute(
-          fallbackPolicy.get.getClass.getName,
-          new BiFunction[String, java.lang.Long, java.lang.Long] {
-            override def apply(k: String, v: java.lang.Long): java.lang.Long = {
-              if (v == null) {
-                1L
-              } else {
-                v + 1L
-              }
-            }
-          })
+        val shuffleFallbackPolicy = fallbackPolicy.get.getClass.getName
+        computeFallbackCounts(shuffleFallbackPolicy, lifecycleManager.shuffleFallbackCounts)
+        computeFallbackCounts(shuffleFallbackPolicy, lifecycleManager.applicationFallbackCounts)
       }
     }
     fallbackPolicy.isDefined
+  }
+
+  private def computeFallbackCounts(
+      fallbackPolicy: String,
+      fallbackCounts: ConcurrentHashMap[String, java.lang.Long]) = {
+    fallbackCounts.compute(
+      fallbackPolicy,
+      new BiFunction[String, java.lang.Long, java.lang.Long] {
+        override def apply(k: String, v: java.lang.Long): java.lang.Long = {
+          if (v == null) {
+            1L
+          } else {
+            v + 1L
+          }
+        }
+      })
   }
 }

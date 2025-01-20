@@ -37,7 +37,9 @@ class ApplicationHeartbeater(
     appId: String,
     conf: CelebornConf,
     masterClient: MasterClient,
-    shuffleMetrics: () => ((Long, Long), (Long, Map[String, java.lang.Long])),
+    shuffleMetrics: () => (
+        (Long, Long),
+        (Long, Long, Map[String, java.lang.Long], Map[String, java.lang.Long])),
     workerStatusTracker: WorkerStatusTracker,
     registeredShuffles: ConcurrentHashMap.KeySetView[Int, java.lang.Boolean],
     cancelAllActiveStages: String => Unit) extends Logging {
@@ -61,10 +63,15 @@ class ApplicationHeartbeater(
             require(masterClient != null, "When sending a heartbeat, client shouldn't be null.")
             val (
               (tmpTotalWritten, tmpTotalFileCount),
-              (tmpShuffleCount, tmpShuffleFallbackCounts)) = shuffleMetrics()
+              (
+                tmpShuffleCount,
+                tmpApplicationCount,
+                tmpShuffleFallbackCounts,
+                tmpApplicationFallbackCounts)) = shuffleMetrics()
             logInfo("Send app heartbeat with " +
               s"written: ${Utils.bytesToString(tmpTotalWritten)}, file count: $tmpTotalFileCount, " +
-              s"shuffle count: $tmpShuffleCount, shuffle fallback counts: $tmpShuffleFallbackCounts")
+              s"shuffle count: $tmpShuffleCount, shuffle fallback counts: $tmpShuffleFallbackCounts, " +
+              s"application count: $tmpApplicationCount, application fallback counts: $tmpApplicationFallbackCounts")
             // UserResourceConsumption and DiskInfo are eliminated from WorkerInfo
             // during serialization of HeartbeatFromApplication
             val appHeartbeat =
@@ -73,7 +80,9 @@ class ApplicationHeartbeater(
                 tmpTotalWritten,
                 tmpTotalFileCount,
                 tmpShuffleCount,
+                tmpApplicationCount,
                 tmpShuffleFallbackCounts.asJava,
+                tmpApplicationFallbackCounts.asJava,
                 workerStatusTracker.getNeedCheckedWorkers().toList.asJava,
                 ZERO_UUID,
                 true)

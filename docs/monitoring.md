@@ -92,27 +92,29 @@ These metrics are exposed by Celeborn master.
 
   - namespace=master
     
-    | Metric Name                  | Description                                                                       |
-    |------------------------------|-----------------------------------------------------------------------------------|
-    | RegisteredShuffleCount       | The count of registered shuffle.                                                  |
-    | DeviceCelebornFreeBytes      | The actual usable space of Celeborn available workers for device.                 |
-    | DeviceCelebornTotalBytes     | The total space of Celeborn for device.                                           |
-    | RunningApplicationCount      | The count of running applications.                                                |
-    | ActiveShuffleSize            | The active shuffle size of workers.                                               |
-    | ActiveShuffleFileCount       | The active shuffle file count of workers.                                         |
-    | ShuffleTotalCount            | The total count of shuffle including celeborn shuffle and spark built-in shuffle. |
-    | ShuffleFallbackCount         | The count of shuffle fallbacks.                                                   |
-    | WorkerCount                  | The count of active workers.                                                      |
-    | LostWorkerCount              | The count of workers in lost list.                                                |
-    | ExcludedWorkerCount          | The count of workers in excluded list.                                            |
-    | AvailableWorkerCount         | The count of workers in available list.                                           |
-    | ShutdownWorkerCount          | The count of workers in shutdown list.                                            |
-    | DecommissionWorkerCount      | The count of workers in decommission list.                                        |
-    | IsActiveMaster               | Whether the current master is active.                                             |
-    | RatisApplyCompletedIndex     | The ApplyCompletedIndex of the current master node in HA mode.                    |
-    | RatisApplyCompletedIndexDiff | The difference value of ApplyCompletedIndex of the master nodes in HA mode.       |
-    | PartitionSize                | The size of estimated shuffle partition.                                          |
-    | OfferSlotsTime               | The time for masters to handle `RequestSlots` request when registering shuffle.   |
+    | Metric Name                  | Description                                                                               |
+    |------------------------------|-------------------------------------------------------------------------------------------|
+    | RegisteredShuffleCount       | The count of registered shuffle.                                                          |
+    | DeviceCelebornFreeBytes      | The actual usable space of Celeborn available workers for device.                         |
+    | DeviceCelebornTotalBytes     | The total space of Celeborn for device.                                                   |
+    | RunningApplicationCount      | The count of running applications.                                                        |
+    | ActiveShuffleSize            | The active shuffle size of workers.                                                       |
+    | ActiveShuffleFileCount       | The active shuffle file count of workers.                                                 |
+    | ShuffleTotalCount            | The total count of shuffle including celeborn shuffle and engine built-in shuffle.        |
+    | ShuffleFallbackCount         | The count of shuffle fallbacks.                                                           |
+    | ApplicationTotalCount        | The total count of application running with celeborn shuffle and engine built-in shuffle. |
+    | ApplicationFallbackCount     | The count of application fallbacks.                                                       |
+    | WorkerCount                  | The count of active workers.                                                              |
+    | LostWorkerCount              | The count of workers in lost list.                                                        |
+    | ExcludedWorkerCount          | The count of workers in excluded list.                                                    |
+    | AvailableWorkerCount         | The count of workers in available list.                                                   |
+    | ShutdownWorkerCount          | The count of workers in shutdown list.                                                    |
+    | DecommissionWorkerCount      | The count of workers in decommission list.                                                |
+    | IsActiveMaster               | Whether the current master is active.                                                     |
+    | RatisApplyCompletedIndex     | The ApplyCompletedIndex of the current master node in HA mode.                            |
+    | RatisApplyCompletedIndexDiff | The difference value of ApplyCompletedIndex of the master nodes in HA mode.               |
+    | PartitionSize                | The size of estimated shuffle partition.                                                  |
+    | OfferSlotsTime               | The time for masters to handle `RequestSlots` request when registering shuffle.           |
 
   - namespace=CPU
 

@@ -446,6 +446,8 @@ message PbHeartbeatFromApplication {
   bool shouldResponse = 6;
   int64 shuffleCount = 7;
   map<string, int64> shuffleFallbackCounts = 8;
+  int64 applicationCount = 9;
+  map<string, int64> applicationFallbackCounts = 10;
 }
 
 message PbHeartbeatFromApplicationResponse {
@@ -682,6 +684,8 @@ message PbSnapshotMetaInfo {
   repeated PbWorkerInfo decommissionWorkers = 17;
   int64 shuffleTotalCount = 18;
   map<string, int64> shuffleFallbackCounts = 19;
+  int64 applicationTotalCount = 20;
+  map<string, int64> applicationFallbackCounts = 21;
 }
 
 message PbOpenStream {
