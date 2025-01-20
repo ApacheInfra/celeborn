@@ -106,7 +106,7 @@ object RpcEnv {
 abstract class RpcEnv(config: RpcEnvConfig) {
 
   private[celeborn] val defaultLookupTimeout = config.conf.rpcLookupTimeout
-  private[celeborn] val defaultRetryWait = config.conf.rpcRetryWaitMs
+  private[celeborn] val defaultRetryWait = config.conf.rpcRetryWait
 
   /**
    * Return RpcEndpointRef of the registered [[RpcEndpoint]]. Will be used to implement

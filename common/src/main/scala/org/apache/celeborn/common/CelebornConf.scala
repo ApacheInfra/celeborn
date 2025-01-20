@@ -520,7 +520,7 @@ class CelebornConf(loadDefaults: Boolean) extends Cloneable with Logging with Se
     new RpcTimeout(get(RPC_LOOKUP_TIMEOUT).milli, RPC_LOOKUP_TIMEOUT.key)
   def rpcAskTimeout: RpcTimeout =
     new RpcTimeout(get(RPC_ASK_TIMEOUT).milli, RPC_ASK_TIMEOUT.key)
-  def rpcRetryWaitMs: Long = get(RPC_RETRY_WAIT)
+  def rpcRetryWait: Long = get(RPC_RETRY_WAIT)
   def rpcInMemoryBoundedInboxCapacity(): Int = {
     get(RPC_INBOX_CAPACITY)
   }
