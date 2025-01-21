@@ -133,9 +133,17 @@ class MemoryManagerSuite extends CelebornFunSuite {
     }
     // [CELEBORN-882] Test record pause push time
     assert(memoryManager.getPausePushDataTime.longValue() > 0)
-    assert(memoryManager.getPausePushDataAndReplicateTime.longValue() == 0)
-    val lastPauseTime = memoryManager.getPausePushDataTime.longValue()
 
+    // [CELEBORN-1215][FOLLOWUP] Improve PausePushDataTime and PausePushDataAndReplicateTime metric calculation logic
+    assert(memoryManager.getPausePushDataAndReplicateTime.longValue() > 0)
+    assert(memoryManager.getPausePushDataTime.longValue()
+      > memoryManager.getPausePushDataAndReplicateTime.longValue())
+    assert(memoryManager.getPausePushDataCounter.longValue() == 1)
+    assert(memoryManager.getPausePushDataAndReplicateCounter.longValue() == 1)
+
+    val lastPausePushDataTime = memoryManager.getPausePushDataTime.longValue()
+    val lastPausePushDataAndReplicateTime =
+      memoryManager.getPausePushDataAndReplicateTime.longValue()
     // NONE PAUSED -> PAUSE PUSH AND REPLICATE
     memoryCounter.set(replicateThreshold + 1)
     eventually(timeout(30.second), interval(10.milliseconds)) {
@@ -149,8 +157,14 @@ class MemoryManagerSuite extends CelebornFunSuite {
       assert(!pushListener.isPause)
       assert(!replicateListener.isPause)
     }
-    assert(memoryManager.getPausePushDataTime.longValue() == lastPauseTime)
+
     assert(memoryManager.getPausePushDataAndReplicateTime.longValue() > 0)
+
+    // [CELEBORN-1215][FOLLOWUP] Improve PausePushDataTime and PausePushDataAndReplicateTime metric calculation logic
+    assert(memoryManager.getPausePushDataTime.longValue() - lastPausePushDataTime
+      == memoryManager.getPausePushDataAndReplicateTime.longValue() - lastPausePushDataAndReplicateTime)
+    assert(memoryManager.getPausePushDataCounter.longValue() == 2)
+    assert(memoryManager.getPausePushDataAndReplicateCounter.longValue() == 2)
   }
 
   class MockMemoryPressureListener(
