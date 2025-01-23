@@ -114,7 +114,11 @@ public class TransportClientFactory implements Closeable {
     this.socketChannelClass = NettyUtils.getClientChannelClass(ioMode);
     logger.info("Module {} mode {} threads {}", conf.getModuleName(), ioMode, conf.clientThreads());
     this.workerGroup =
-        NettyUtils.createEventLoop(ioMode, conf.clientThreads(), conf.getModuleName() + "-client");
+        NettyUtils.createEventLoop(
+            ioMode,
+            conf.clientThreads(),
+            conf.conflictAvoidChooserEnable(),
+            conf.getModuleName() + "-client");
     // Always disable thread-local cache when creating pooled ByteBuf allocator for TransportClients
     // because the ByteBufs are allocated by the event loop thread, but released by the executor
     // thread rather than the event loop thread. Those thread-local caches actually delay the
