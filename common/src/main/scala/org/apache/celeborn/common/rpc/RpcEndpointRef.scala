@@ -17,6 +17,9 @@
 
 package org.apache.celeborn.common.rpc
 
+import java.util.Random
+import java.util.concurrent.TimeUnit
+
 import scala.concurrent.Future
 import scala.reflect.ClassTag
 
@@ -30,6 +33,7 @@ abstract class RpcEndpointRef(conf: CelebornConf)
   extends Serializable with Logging {
 
   private[this] val defaultAskTimeout = conf.rpcAskTimeout
+  private[this] val defaultRetryWait = conf.rpcRetryWait
 
   /**
    * return the address for the [[RpcEndpointRef]]
@@ -85,6 +89,64 @@ abstract class RpcEndpointRef(conf: CelebornConf)
    * @return the reply message from the corresponding [[RpcEndpoint]]
    */
   def askSync[T: ClassTag](message: Any, timeout: RpcTimeout): T = {
+    val future = ask[T](message, timeout)
+    timeout.awaitResult(future, address)
+  }
+
+  /**
+   * Send a message to the corresponding [[RpcEndpoint.receiveAndReply]] and get its result within a
+   * default timeout, retry if timeout, throw an exception if this still fails.
+   *
+   * Note: this is a blocking action which may cost a lot of time,  so don't call it in a message
+   * loop of [[RpcEndpoint]].
+   *
+   * @param message the message to send
+   * @tparam T type of the reply message
+   * @return the reply message from the corresponding [[RpcEndpoint]]
+   */
+  def askSync[T: ClassTag](message: Any, retryCount: Int, retryWait: Long = defaultRetryWait): T =
+    askSync(message, defaultAskTimeout, retryCount, retryWait)
+
+  /**
+   * Send a message to the corresponding [[RpcEndpoint.receiveAndReply]] and get its result within a
+   * specified timeout, retry if timeout, throw an exception if this still fails.
+   *
+   * Note: this is a blocking action which may cost a lot of time, so don't call it in a message
+   * loop of [[RpcEndpoint]].
+   *
+   * @param message the message to send
+   * @param timeout the timeout duration
+   * @tparam T type of the reply message
+   * @return the reply message from the corresponding [[RpcEndpoint]]
+   */
+  def askSync[T: ClassTag](
+      message: Any,
+      timeout: RpcTimeout,
+      retryCount: Int,
+      retryWait: Long): T = {
+    var numRetries = retryCount
+    while (numRetries > 0) {
+      numRetries -= 1
+      try {
+        val future = ask[T](message, timeout)
+        return timeout.awaitResult(future, address)
+      } catch {
+        case e: RpcTimeoutException =>
+          if (numRetries > 0) {
+            val random = new Random
+            val retryWaitMs = random.nextInt(retryWait.toInt)
+            try {
+              TimeUnit.MILLISECONDS.sleep(retryWaitMs)
+            } catch {
+              case _: InterruptedException =>
+                throw e
+            }
+          } else {
+            throw e
+          }
+      }
+    }
+    // should never be here
     val future = ask[T](message, timeout)
     timeout.awaitResult(future, address)
   }
