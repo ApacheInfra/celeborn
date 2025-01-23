@@ -38,7 +38,9 @@ import org.apache.celeborn.client.ShuffleClient;
 import org.apache.celeborn.client.compress.Decompressor;
 import org.apache.celeborn.common.CelebornConf;
 import org.apache.celeborn.common.exception.CelebornIOException;
+import org.apache.celeborn.common.network.client.TransportClient;
 import org.apache.celeborn.common.network.client.TransportClientFactory;
+import org.apache.celeborn.common.network.protocol.TransportMessage;
 import org.apache.celeborn.common.protocol.*;
 import org.apache.celeborn.common.unsafe.Platform;
 import org.apache.celeborn.common.util.ExceptionMaker;
@@ -322,14 +324,10 @@ public abstract class CelebornInputStream extends InputStream {
 
     private PartitionReader createReaderWithRetry(
         PartitionLocation location, PbStreamHandler pbStreamHandler) throws IOException {
-      // For the first time, the location will be selected according to attemptNumber
-      if (fetchChunkRetryCnt == 0 && attemptNumber % 2 == 1 && location.hasPeer()) {
-        location = location.getPeer();
-        logger.debug("Read peer {} for attempt {}.", location, attemptNumber);
-      }
       Exception lastException = null;
       while (fetchChunkRetryCnt < fetchChunkMaxRetry) {
         try {
+          logger.debug("Create reader for location {}", location);
           if (isExcluded(location)) {
             throw new CelebornIOException("Fetch data from excluded worker! " + location);
           }
@@ -350,6 +348,28 @@ public abstract class CelebornInputStream extends InputStream {
                 fetchChunkMaxRetry,
                 location,
                 e);
+            if (pbStreamHandler != null) {
+              try {
+                TransportClient client =
+                    clientFactory.createClient(location.getHost(), location.getFetchPort());
+                TransportMessage bufferStreamEnd =
+                    new TransportMessage(
+                        MessageType.BUFFER_STREAM_END,
+                        PbBufferStreamEnd.newBuilder()
+                            .setStreamType(StreamType.ChunkStream)
+                            .setStreamId(pbStreamHandler.getStreamId())
+                            .build()
+                            .toByteArray());
+                client.sendRpc(bufferStreamEnd.toByteBuffer());
+              } catch (InterruptedException | IOException ex) {
+                logger.warn(
+                    "Close {} stream {} failed",
+                    location.hostAndFetchPort(),
+                    pbStreamHandler.getStreamId(),
+                    ex);
+              }
+              pbStreamHandler = null;
+            }
             location = location.getPeer();
           } else {
             logger.warn(
@@ -422,7 +442,6 @@ public abstract class CelebornInputStream extends InputStream {
         int fetchChunkRetryCnt,
         int fetchChunkMaxRetry)
         throws IOException, InterruptedException {
-      logger.debug("Create reader for location {}", location);
 
       StorageInfo storageInfo = location.getStorageInfo();
       switch (storageInfo.getType()) {
