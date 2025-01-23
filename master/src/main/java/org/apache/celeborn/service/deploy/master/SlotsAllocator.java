@@ -334,9 +334,8 @@ public class SlotsAllocator {
       boolean shouldReplicate,
       boolean shouldRackAware,
       int availableStorageTypes) {
-    // workerInfo -> (diskIndexForPrimary, diskIndexForReplica)
-    Map<WorkerInfo, Integer> workerDiskIndexForPrimary = new HashMap<>();
-    Map<WorkerInfo, Integer> workerDiskIndexForReplica = new HashMap<>();
+    // workerInfo -> (diskIndexForPrimaryAndReplica)
+    Map<WorkerInfo, Integer> workerDiskIndex = new HashMap<>();
     List<Integer> partitionIdList = new LinkedList<>(partitionIds);
 
     final int workerSize = workers.size();
@@ -361,11 +360,7 @@ public class SlotsAllocator {
         }
         storageInfo =
             getStorageInfo(
-                workers,
-                nextPrimaryInd,
-                slotsRestrictions,
-                workerDiskIndexForPrimary,
-                availableStorageTypes);
+                workers, nextPrimaryInd, slotsRestrictions, workerDiskIndex, availableStorageTypes);
       } else {
         if (StorageInfo.localDiskAvailable(availableStorageTypes)) {
           while (!workers.get(nextPrimaryInd).haveDisk()) {
@@ -376,8 +371,7 @@ public class SlotsAllocator {
           }
         }
         storageInfo =
-            getStorageInfo(
-                workers, nextPrimaryInd, null, workerDiskIndexForPrimary, availableStorageTypes);
+            getStorageInfo(workers, nextPrimaryInd, null, workerDiskIndex, availableStorageTypes);
       }
       PartitionLocation primaryPartition =
           createLocation(partitionId, workers.get(nextPrimaryInd), null, storageInfo, true);
@@ -398,7 +392,7 @@ public class SlotsAllocator {
                   workers,
                   nextReplicaInd,
                   slotsRestrictions,
-                  workerDiskIndexForReplica,
+                  workerDiskIndex,
                   availableStorageTypes);
         } else if (shouldRackAware) {
           while (nextReplicaInd == nextPrimaryInd
@@ -418,8 +412,7 @@ public class SlotsAllocator {
             }
           }
           storageInfo =
-              getStorageInfo(
-                  workers, nextReplicaInd, null, workerDiskIndexForReplica, availableStorageTypes);
+              getStorageInfo(workers, nextReplicaInd, null, workerDiskIndex, availableStorageTypes);
         }
         PartitionLocation replicaPartition =
             createLocation(

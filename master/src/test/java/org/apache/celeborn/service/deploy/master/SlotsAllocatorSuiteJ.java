@@ -216,26 +216,54 @@ public class SlotsAllocatorSuiteJ {
     check(workers, partitionIds, shouldReplicate, true);
   }
 
+  @Test
+  public void testAllocate3000ReduceIdsWithReplicateOnRoundRobin() {
+    final List<WorkerInfo> workers = prepareWorkers(true);
+    final List<Integer> partitionIds = new ArrayList<>();
+    for (int i = 0; i < 3000; i++) {
+      partitionIds.add(i);
+    }
+    final boolean shouldReplicate = true;
+
+    check(workers, partitionIds, shouldReplicate, true, true);
+  }
+
   private void check(
       List<WorkerInfo> workers,
       List<Integer> partitionIds,
       boolean shouldReplicate,
       boolean expectSuccess) {
+    check(workers, partitionIds, shouldReplicate, expectSuccess, false);
+  }
+
+  private void check(
+      List<WorkerInfo> workers,
+      List<Integer> partitionIds,
+      boolean shouldReplicate,
+      boolean expectSuccess,
+      boolean roundrobin) {
     String shuffleKey = "appId-1";
     CelebornConf conf = new CelebornConf();
     conf.set(CelebornConf.MASTER_SLOT_ASSIGN_LOADAWARE_DISKGROUP_NUM().key(), "2");
     conf.set(CelebornConf.MASTER_SLOT_ASSIGN_LOADAWARE_DISKGROUP_GRADIENT().key(), "1");
-    Map<WorkerInfo, Tuple2<List<PartitionLocation>, List<PartitionLocation>>> slots =
-        SlotsAllocator.offerSlotsLoadAware(
-            workers,
-            partitionIds,
-            shouldReplicate,
-            false,
-            conf.masterSlotAssignLoadAwareDiskGroupNum(),
-            conf.masterSlotAssignLoadAwareDiskGroupGradient(),
-            conf.masterSlotAssignLoadAwareFlushTimeWeight(),
-            conf.masterSlotAssignLoadAwareFetchTimeWeight(),
-            StorageInfo.ALL_TYPES_AVAILABLE_MASK);
+    Map<WorkerInfo, Tuple2<List<PartitionLocation>, List<PartitionLocation>>> slots;
+    if (roundrobin) {
+      slots =
+          SlotsAllocator.offerSlotsRoundRobin(
+              workers, partitionIds, shouldReplicate, false, StorageInfo.ALL_TYPES_AVAILABLE_MASK);
+    } else {
+      slots =
+          SlotsAllocator.offerSlotsLoadAware(
+              workers,
+              partitionIds,
+              shouldReplicate,
+              false,
+              conf.masterSlotAssignLoadAwareDiskGroupNum(),
+              conf.masterSlotAssignLoadAwareDiskGroupGradient(),
+              conf.masterSlotAssignLoadAwareFlushTimeWeight(),
+              conf.masterSlotAssignLoadAwareFetchTimeWeight(),
+              StorageInfo.ALL_TYPES_AVAILABLE_MASK);
+    }
     if (expectSuccess) {
       if (shouldReplicate) {
         slots.forEach(
@@ -265,6 +293,19 @@ public class SlotsAllocatorSuiteJ {
         worker.allocateSlots(shuffleKey, allocationMap);
         if (allocationMap.containsKey("UNKNOWN_DISK")) {
           unknownDiskSlots += allocationMap.get("UNKNOWN_DISK");
+        }
+        if (roundrobin && !allocationMap.isEmpty()) {
+          int maxSlots = Collections.max(allocationMap.values());
+          int minSlots = Collections.min(allocationMap.values());
+          assertTrue(
+              "Worker "
+                  + worker.host()
+                  + " has unbalanced slot allocation. "
+                  + "Max: "
+                  + maxSlots
+                  + ", Min: "
+                  + minSlots,
+              maxSlots - minSlots <= 1);
         }
       }
       int allocateToDiskSlots = 0;
