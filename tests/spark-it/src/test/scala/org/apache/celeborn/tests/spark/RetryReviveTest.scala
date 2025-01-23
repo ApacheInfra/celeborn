@@ -17,6 +17,8 @@
 
 package org.apache.celeborn.tests.spark
 
+import scala.util.Random
+
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.scalatest.BeforeAndAfterEach
@@ -77,6 +79,30 @@ class RetryReviveTest extends AnyFunSuite
     val result = ss.sparkContext.parallelize(1 to 1000, 2)
       .map { i => (i, Range(1, 1000).mkString(",")) }.groupByKey(4).collect()
     assert(result.size == 1000)
+    ss.stop()
+  }
+
+  test("celeborn spark integration test - revive test replicate enabled when workers are randomly killed") {
+    setupMiniClusterWithRandomPorts()
+    ShuffleClient.reset()
+    val sparkConf = new SparkConf()
+      .set(s"spark.${CelebornConf.CLIENT_PUSH_REPLICATE_ENABLED.key}", "true")
+      .set(s"spark.${CelebornConf.CLIENT_STAGE_RERUN_ENABLED.key}", "false")
+      .setAppName("celeborn-demo").setMaster("local[2]")
+    val ss = SparkSession.builder()
+      .config(updateSparkConf(sparkConf, ShuffleMode.HASH))
+      .getOrCreate()
+
+    val startTime = System.currentTimeMillis()
+    val result = ss.sparkContext.parallelize(1 to 800, 100)
+      .flatMap(_ => (1 to 15000).iterator.map(num => num)).repartition(100).count()
+    val taskTime = System.currentTimeMillis() - startTime
+    val random = new Random()
+    val workerKillTime = random.nextInt(taskTime.toInt)
+    workerKiller(workerKillTime)
+    val result1 = ss.sparkContext.parallelize(1 to 800, 100)
+      .flatMap(_ => (1 to 15000).iterator.map(num => num)).repartition(100).count()
+    assert(result1 == result)
     ss.stop()
   }
 }
