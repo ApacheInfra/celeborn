@@ -2253,7 +2253,7 @@ object CelebornConf extends Logging {
         "users to provide a custom master endpoint resolver implementation. This is useful in environments " +
         "where the master nodes might change due to scaling operations or infrastructure updates. Clients " +
         "need to ensure that provided resolver class should be present in the classpath.")
-      .version("0.6.0")
+      .version("0.5.2")
       .stringConf
       .checkValue(
         resolver => Utils.classIsLoadable(resolver),
@@ -5655,7 +5655,7 @@ object CelebornConf extends Logging {
     buildConf("celeborn.client.chunk.prefetch.enabled")
       .categories("client")
       .doc("Whether to enable chunk prefetch when creating CelebornInputStream.")
-      .version("0.6.0")
+      .version("0.5.1")
       .booleanConf
       .createWithDefault(false)
 
@@ -5664,7 +5664,7 @@ object CelebornConf extends Logging {
       .categories("client")
       .doc("Window size that CelebornShuffleReader pre-creates CelebornInputStreams, for coalesced scenario " +
         "where multiple Partitions are read")
-      .version("0.6.0")
+      .version("0.5.1")
       .intConf
       .createWithDefault(16)
 
