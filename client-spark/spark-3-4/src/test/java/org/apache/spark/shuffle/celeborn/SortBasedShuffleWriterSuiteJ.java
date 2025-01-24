@@ -64,7 +64,13 @@ public class SortBasedShuffleWriterSuiteJ extends CelebornShuffleWriterSuiteBase
       ShuffleWriteMetricsReporter metrics)
       throws IOException {
     return new SortBasedShuffleWriter<Integer, String, String>(
-        handle, context, conf, client, metrics, SendBufferPool.get(4, 30, 60));
+        SparkUtils.celebornShuffleId(client, handle, taskContext, true),
+        handle,
+        context,
+        conf,
+        client,
+        metrics,
+        SendBufferPool.get(4, 30, 60));
   }
 
   private SortBasedShuffleWriter<Integer, String, String> createShuffleWriterWithPusher(
@@ -76,7 +82,14 @@ public class SortBasedShuffleWriterSuiteJ extends CelebornShuffleWriterSuiteBase
       SortBasedPusher pusher)
       throws Exception {
     return new SortBasedShuffleWriter<Integer, String, String>(
-        handle, context, conf, client, metrics, SendBufferPool.get(4, 30, 60), pusher);
+        SparkUtils.celebornShuffleId(client, handle, taskContext, true),
+        handle,
+        context,
+        conf,
+        client,
+        metrics,
+        SendBufferPool.get(4, 30, 60),
+        pusher);
   }
 
   private SortBasedPusher createSortBasedPusher(

@@ -132,7 +132,7 @@ public class ColumnarHashBasedShuffleWriter<K, V, C> extends HashBasedShuffleWri
   }
 
   @Override
-  protected void closeWrite() throws IOException {
+  protected void closeWrite() throws IOException, InterruptedException {
     if (canUseFastWrite() && isColumnarShuffle) {
       closeColumnarWrite();
     } else {

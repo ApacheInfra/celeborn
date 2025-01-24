@@ -281,8 +281,7 @@ public class SparkShuffleManager implements ShuffleManager {
         if (ShuffleMode.SORT.equals(shuffleMode)) {
           return new SortBasedShuffleWriter<>(
               shuffleId,
-              h.dependency(),
-              h.numMappers(),
+              h,
               context,
               celebornConf,
               shuffleClient,
