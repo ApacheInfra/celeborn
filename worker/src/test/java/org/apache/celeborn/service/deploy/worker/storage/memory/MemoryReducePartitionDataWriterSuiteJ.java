@@ -54,6 +54,7 @@ import org.apache.celeborn.common.protocol.*;
 import org.apache.celeborn.common.unsafe.Platform;
 import org.apache.celeborn.common.util.ThreadUtils;
 import org.apache.celeborn.service.deploy.worker.FetchHandler;
+import org.apache.celeborn.service.deploy.worker.SortFileInfo;
 import org.apache.celeborn.service.deploy.worker.WorkerSource;
 import org.apache.celeborn.service.deploy.worker.memory.MemoryManager;
 import org.apache.celeborn.service.deploy.worker.storage.*;
@@ -135,10 +136,14 @@ public class MemoryReducePartitionDataWriterSuiteJ {
           }
         };
     PartitionFilesSorter sorter = mock(PartitionFilesSorter.class);
-    Mockito.doReturn(info)
-        .when(sorter)
-        .getSortedFileInfo(anyString(), anyString(), eq(info), anyInt(), anyInt());
+    Mockito.doReturn(info).when(sorter).sortAndGetMemoryFileInfo(eq(info), anyInt(), anyInt());
+    ScheduledExecutorService sortFileChecker =
+        ThreadUtils.newDaemonSingleThreadScheduledExecutor("worker-sortFile-checker");
+    ConcurrentHashMap<String, ConcurrentHashMap<String, SortFileInfo>> sortFilesInfo =
+        new ConcurrentHashMap<>();
     handler.setPartitionsSorter(sorter);
+    handler.setSortFileChecker(sortFileChecker);
+    handler.setSortFilesInfos(sortFilesInfo);
     TransportContext context = new TransportContext(transConf, handler);
     server = context.createServer();
 

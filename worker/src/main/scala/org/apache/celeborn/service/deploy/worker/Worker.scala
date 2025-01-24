@@ -41,7 +41,7 @@ import org.apache.celeborn.common.network.{CelebornRackResolver, TransportContex
 import org.apache.celeborn.common.network.sasl.SaslServerBootstrap
 import org.apache.celeborn.common.network.server.TransportServerBootstrap
 import org.apache.celeborn.common.network.util.TransportConf
-import org.apache.celeborn.common.protocol.{PartitionType, PbRegisterWorkerResponse, PbWorkerLostResponse, RpcNameConstants, TransportModuleConstants, WorkerEventType}
+import org.apache.celeborn.common.protocol.{PartitionType, PbOpenStreamListResponse, PbRegisterWorkerResponse, PbStreamHandlerOpt, PbWorkerLostResponse, RpcNameConstants, TransportModuleConstants, WorkerEventType}
 import org.apache.celeborn.common.protocol.PbWorkerStatus.State
 import org.apache.celeborn.common.protocol.message.ControlMessages._
 import org.apache.celeborn.common.quota.ResourceConsumption
@@ -315,6 +315,16 @@ private[celeborn] class Worker(
       : ConcurrentHashMap[String, ConcurrentHashMap[Long, (Long, RpcCallContext)]] =
     JavaUtils.newConcurrentHashMap[String, ConcurrentHashMap[Long, (Long, RpcCallContext)]]()
 
+  val sortFilesInfo: ConcurrentHashMap[String, ConcurrentHashMap[String, SortFileInfo]] =
+    JavaUtils.newConcurrentHashMap[String, ConcurrentHashMap[String, SortFileInfo]]()
+
+  val pbOpenStreamListResponseMap
+      : ConcurrentHashMap[String, ConcurrentHashMap[Int, PbStreamHandlerOpt]] =
+    JavaUtils.newConcurrentHashMap[String, ConcurrentHashMap[Int, PbStreamHandlerOpt]]()
+
+  val batchSortingCnt: ConcurrentHashMap[String, Int] =
+    JavaUtils.newConcurrentHashMap[String, Int]()
+
   private val masterClient = new MasterClient(internalRpcEnvInUse, conf, true)
   secretRegistry.initialize(masterClient)
 
@@ -337,6 +347,8 @@ private[celeborn] class Worker(
     ThreadUtils.newDaemonCachedThreadPool("worker-files-committer", conf.workerCommitThreads)
   val commitFinishedChecker: ScheduledExecutorService =
     ThreadUtils.newDaemonSingleThreadScheduledExecutor("worker-commit-checker")
+  val sortFileChecker: ScheduledExecutorService =
+    ThreadUtils.newDaemonSingleThreadScheduledExecutor("worker-sortFile-checker")
   val cleanThreadPool: ThreadPoolExecutor =
     ThreadUtils.newDaemonCachedThreadPool(
       "worker-expired-shuffle-cleaner",
@@ -597,13 +609,15 @@ private[celeborn] class Worker(
         forwardMessageScheduler.shutdown()
         replicateThreadPool.shutdown()
         commitThreadPool.shutdown()
-        commitFinishedChecker.shutdown();
+        commitFinishedChecker.shutdown()
+        sortFileChecker.shutdown()
         asyncReplyPool.shutdown()
       } else {
         forwardMessageScheduler.shutdownNow()
         replicateThreadPool.shutdownNow()
         commitThreadPool.shutdownNow()
-        commitFinishedChecker.shutdownNow();
+        commitFinishedChecker.shutdownNow()
+        sortFileChecker.shutdown()
         asyncReplyPool.shutdownNow()
       }
       workerSource.appActiveConnections.clear()
@@ -762,6 +776,8 @@ private[celeborn] class Worker(
         shuffleMapperAttempts.remove(shuffleKey)
         shuffleCommitInfos.remove(shuffleKey)
         shuffleCommitTime.remove(shuffleKey)
+        sortFilesInfo.remove(shuffleKey)
+        pbOpenStreamListResponseMap.remove(shuffleKey)
         workerInfo.releaseSlots(shuffleKey)
         val applicationId = Utils.splitShuffleKey(shuffleKey)._1
         if (!workerInfo.getApplicationIdSet.contains(applicationId)) {

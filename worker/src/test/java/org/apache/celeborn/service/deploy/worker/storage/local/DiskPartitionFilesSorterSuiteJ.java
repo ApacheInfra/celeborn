@@ -144,13 +144,24 @@ public class DiskPartitionFilesSorterSuiteJ {
       conf.set(CelebornConf.SHUFFLE_CHUNK_SIZE().key(), "8m");
       PartitionFilesSorter partitionFilesSorter =
           new PartitionFilesSorter(MemoryManager.instance(), conf, new WorkerSource(conf));
+
+      FileInfo fileInfo = partitionDataWriter.getDiskFileInfo();
+
+      partitionFilesSorter.submitDiskFileSortingTask("application-1", originFileName, fileInfo);
+
+      while (partitionFilesSorter.getSortedDiskFileInfo(
+              "application-1", originFileName, fileInfo, startMapIndex, endMapIndex)
+          == null) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          logger.warn("waiting for sorted DiskFileInfo error");
+        }
+      }
+
       FileInfo info =
-          partitionFilesSorter.getSortedFileInfo(
-              "application-1",
-              originFileName,
-              partitionDataWriter.getDiskFileInfo(),
-              startMapIndex,
-              endMapIndex);
+          partitionFilesSorter.getSortedDiskFileInfo(
+              "application-1", originFileName, fileInfo, startMapIndex, endMapIndex);
       long totalSizeToFetch = 0;
       for (int i = startMapIndex; i < endMapIndex; i++) {
         totalSizeToFetch += partitionSize[i];

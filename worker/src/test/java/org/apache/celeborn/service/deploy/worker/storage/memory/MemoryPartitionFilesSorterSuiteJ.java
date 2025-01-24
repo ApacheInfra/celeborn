@@ -129,12 +129,8 @@ public class MemoryPartitionFilesSorterSuiteJ {
     PartitionFilesSorter partitionFilesSorter =
         new PartitionFilesSorter(MemoryManager.instance(), conf, new WorkerSource(conf));
     FileInfo info =
-        partitionFilesSorter.getSortedFileInfo(
-            "application-1",
-            "",
-            partitionDataWriter.getMemoryFileInfo(),
-            startMapIndex,
-            endMapIndex);
+        partitionFilesSorter.sortAndGetMemoryFileInfo(
+            partitionDataWriter.getMemoryFileInfo(), startMapIndex, endMapIndex);
     long totalSizeToFetch = 0;
     for (int i = startMapIndex; i < endMapIndex; i++) {
       totalSizeToFetch += partitionSize[i];

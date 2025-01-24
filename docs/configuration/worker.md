@@ -168,6 +168,7 @@ license: |
 | celeborn.worker.shuffle.partitionSplit.enabled | true | false | enable the partition split on worker side | 0.3.0 | celeborn.worker.partition.split.enabled | 
 | celeborn.worker.shuffle.partitionSplit.max | 2g | false | Specify the maximum partition size for splitting, and ensure that individual partition files are always smaller than this limit. | 0.3.0 |  | 
 | celeborn.worker.shuffle.partitionSplit.min | 1m | false | Min size for a partition to split | 0.3.0 | celeborn.shuffle.partitionSplit.min | 
+| celeborn.worker.sortFiles.check.interval | 100 | false | Time length for a window about checking whether FileSorter task finished. | 0.6.0 |  | 
 | celeborn.worker.sortPartition.indexCache.expire | 180s | false | PartitionSorter's cache item expire time. | 0.4.0 |  | 
 | celeborn.worker.sortPartition.indexCache.maxWeight | 100000 | false | PartitionSorter's cache max weight for index buffer. | 0.4.0 |  | 
 | celeborn.worker.sortPartition.prefetch.enabled | true | false | When true, partition sorter will prefetch the original partition files to page cache and reserve memory configured by `celeborn.worker.sortPartition.reservedMemoryPerPartition` to allocate a block of memory for prefetching while sorting a shuffle file off-heap with page cache for non-hdfs files. Otherwise, partition sorter seeks to position of each block and does not prefetch for non-hdfs files. | 0.5.0 |  | 

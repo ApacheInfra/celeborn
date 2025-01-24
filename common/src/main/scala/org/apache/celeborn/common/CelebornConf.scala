@@ -829,6 +829,7 @@ class CelebornConf(loadDefaults: Boolean) extends Cloneable with Logging with Se
   def workerCommitThreads: Int =
     if (hasHDFSStorage) Math.max(128, get(WORKER_COMMIT_THREADS)) else get(WORKER_COMMIT_THREADS)
   def workerCommitFilesCheckInterval: Long = get(WORKER_COMMIT_FILES_CHECK_INTERVAL)
+  def workerSortFilesCheckInterval: Long = get(WORKER_SORT_FILES_CHECK_INTERVAL)
   def workerCleanThreads: Int = get(WORKER_CLEAN_THREADS)
   def workerShuffleCommitTimeout: Long = get(WORKER_SHUFFLE_COMMIT_TIMEOUT)
   def maxPartitionSizeToEstimate: Long =
@@ -3491,6 +3492,14 @@ object CelebornConf extends Logging {
       .categories("worker")
       .version("0.6.0")
       .doc("Time length for a window about checking whether commit shuffle data files finished.")
+      .timeConf(TimeUnit.MILLISECONDS)
+      .createWithDefaultString("100")
+
+  val WORKER_SORT_FILES_CHECK_INTERVAL: ConfigEntry[Long] =
+    buildConf("celeborn.worker.sortFiles.check.interval")
+      .categories("worker")
+      .version("0.6.0")
+      .doc("Time length for a window about checking whether FileSorter task finished.")
       .timeConf(TimeUnit.MILLISECONDS)
       .createWithDefaultString("100")
 
