@@ -75,11 +75,20 @@ public class SingleMasterMetaManager extends AbstractMetaManager {
       long totalWritten,
       long fileCount,
       long shuffleCount,
+      long applicationCount,
       Map<String, Long> shuffleFallbackCounts,
+      Map<String, Long> applicationFallbackCounts,
       long time,
       String requestId) {
     updateAppHeartbeatMeta(
-        appId, time, totalWritten, fileCount, shuffleCount, shuffleFallbackCounts);
+        appId,
+        time,
+        totalWritten,
+        fileCount,
+        shuffleCount,
+        applicationCount,
+        shuffleFallbackCounts,
+        applicationFallbackCounts);
   }
 
   @Override

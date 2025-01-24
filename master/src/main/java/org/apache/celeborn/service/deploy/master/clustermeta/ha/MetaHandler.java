@@ -141,7 +141,12 @@ public class MetaHandler {
           long totalWritten = request.getAppHeartbeatRequest().getTotalWritten();
           long fileCount = request.getAppHeartbeatRequest().getFileCount();
           long shuffleCount = request.getAppHeartbeatRequest().getShuffleCount();
-          LOG.debug("Handle app heartbeat for {} with shuffle count {}", appId, shuffleCount);
+          long applicationCount = request.getAppHeartbeatRequest().getApplicationCount();
+          LOG.debug(
+              "Handle app heartbeat for {} with shuffle count {} and application count {}",
+              appId,
+              shuffleCount,
+              applicationCount);
           Map<String, Long> shuffleFallbackCounts =
               request.getAppHeartbeatRequest().getShuffleFallbackCountsMap();
           if (CollectionUtils.isNotEmpty(shuffleFallbackCounts)) {
@@ -150,8 +155,17 @@ public class MetaHandler {
                 shuffleFallbackCounts.values().stream().mapToLong(v -> v).sum(),
                 appId);
           }
+          Map<String, Long> applicationFallbackCounts =
+              request.getAppHeartbeatRequest().getApplicationFallbackCountsMap();
           metaSystem.updateAppHeartbeatMeta(
-              appId, time, totalWritten, fileCount, shuffleCount, shuffleFallbackCounts);
+              appId,
+              time,
+              totalWritten,
+              fileCount,
+              shuffleCount,
+              applicationCount,
+              shuffleFallbackCounts,
+              applicationFallbackCounts);
           break;
 
         case AppLost:

@@ -24,7 +24,7 @@ import java.util
 import java.util.{function, List => JList}
 import java.util.concurrent._
 import java.util.concurrent.atomic.{AtomicInteger, LongAdder}
-import java.util.function.{BiConsumer, Consumer}
+import java.util.function.{BiConsumer, BiFunction, Consumer}
 
 import scala.collection.JavaConverters._
 import scala.collection.generic.CanBuildFrom
@@ -86,7 +86,9 @@ class LifecycleManager(val appUniqueId: String, val conf: CelebornConf) extends 
 
   val registeredShuffle = ConcurrentHashMap.newKeySet[Int]()
   val shuffleCount = new LongAdder()
+  val applicationCount = new LongAdder()
   val shuffleFallbackCounts = JavaUtils.newConcurrentHashMap[String, java.lang.Long]()
+  val applicationFallbackCounts = JavaUtils.newConcurrentHashMap[String, java.lang.Long]()
   // maintain each shuffle's map relation of WorkerInfo and partition location
   val shuffleAllocatedWorkers = new ShuffleAllocatedWorkers
   // shuffle id -> (partitionId -> newest PartitionLocation)
@@ -217,15 +219,17 @@ class LifecycleManager(val appUniqueId: String, val conf: CelebornConf) extends 
       masterClient,
       () => {
         commitManager.commitMetrics() ->
-          (shuffleCount.sumThenReset(), resetShuffleFallbackCounts())
+          (shuffleCount.sumThenReset(), applicationCount.sumThenReset(), resetFallbackCounts(
+            shuffleFallbackCounts), resetFallbackCounts(applicationFallbackCounts))
       },
       workerStatusTracker,
       registeredShuffle,
       reason => cancelAllActiveStages(reason))
-  private def resetShuffleFallbackCounts(): Map[String, java.lang.Long] = {
+  private def resetFallbackCounts(counts: ConcurrentHashMap[String, java.lang.Long])
+      : Map[String, java.lang.Long] = {
     val fallbackCounts = new util.HashMap[String, java.lang.Long]()
-    shuffleFallbackCounts.keys().asScala.foreach { key =>
-      Option(shuffleFallbackCounts.remove(key)).filter(_ > 0).foreach(fallbackCounts.put(key, _))
+    counts.keys().asScala.foreach { key =>
+      Option(counts.remove(key)).filter(_ > 0).foreach(fallbackCounts.put(key, _))
     }
     fallbackCounts.asScala.toMap
   }
@@ -1844,4 +1848,15 @@ class LifecycleManager(val appUniqueId: String, val conf: CelebornConf) extends 
     case _ =>
   }
 
+  def computeFallbackCounts(
+      fallbackCounts: ConcurrentHashMap[String, java.lang.Long],
+      fallbackPolicy: String): Unit = {
+    fallbackCounts.compute(
+      fallbackPolicy,
+      new BiFunction[String, java.lang.Long, java.lang.Long] {
+        override def apply(k: String, v: java.lang.Long): java.lang.Long = {
+          if (v == null) 1L else v + 1L
+        }
+      })
+  }
 }
