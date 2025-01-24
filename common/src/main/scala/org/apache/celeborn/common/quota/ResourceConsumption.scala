@@ -30,12 +30,26 @@ case class ResourceConsumption(
     hdfsFileCount: Long,
     var subResourceConsumptions: util.Map[String, ResourceConsumption] = null) {
 
+  def withSubResourceConsumptions(
+      resourceConsumptions: util.Map[String, ResourceConsumption]): ResourceConsumption = {
+    subResourceConsumptions = resourceConsumptions
+    this
+  }
+
   def add(other: ResourceConsumption): ResourceConsumption = {
     ResourceConsumption(
       diskBytesWritten + other.diskBytesWritten,
       diskFileCount + other.diskFileCount,
       hdfsBytesWritten + other.hdfsBytesWritten,
       hdfsFileCount + other.hdfsFileCount)
+  }
+
+  def subtract(other: ResourceConsumption): ResourceConsumption = {
+    ResourceConsumption(
+      diskBytesWritten - other.diskBytesWritten,
+      diskFileCount - other.diskFileCount,
+      hdfsBytesWritten - other.hdfsBytesWritten,
+      hdfsFileCount - other.hdfsFileCount)
   }
 
   def addSubResourceConsumptions(otherSubResourceConsumptions: Map[
@@ -76,5 +90,12 @@ case class ResourceConsumption(
       s" hdfsBytesWritten: ${Utils.bytesToString(hdfsBytesWritten)}," +
       s" hdfsFileCount: $hdfsFileCount," +
       s" subResourceConsumptions: $subResourceConsumptionString)"
+  }
+
+  def simpleString: String = {
+    s"ResourceConsumption(diskBytesWritten: ${Utils.bytesToString(diskBytesWritten)}," +
+      s" diskFileCount: $diskFileCount," +
+      s" hdfsBytesWritten: ${Utils.bytesToString(hdfsBytesWritten)}," +
+      s" hdfsFileCount: $hdfsFileCount)"
   }
 }

@@ -20,7 +20,7 @@ package org.apache.celeborn.common.quota
 import org.apache.celeborn.common.internal.Logging
 import org.apache.celeborn.common.util.Utils
 
-case class Quota(
+case class StorageQuota(
     diskBytesWritten: Long,
     diskFileCount: Long,
     hdfsBytesWritten: Long,
@@ -33,4 +33,8 @@ case class Quota(
       s"hdfsFileCount=$hdfsFileCount" +
       s"]"
   }
+}
+
+object StorageQuota {
+  val DEFAULT_QUOTA = StorageQuota(Long.MaxValue, Long.MaxValue, Long.MaxValue, Long.MaxValue)
 }

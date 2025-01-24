@@ -272,7 +272,6 @@ public class HAMasterMetaManager extends AbstractMetaManager {
       int fetchPort,
       int replicatePort,
       Map<String, DiskInfo> disks,
-      Map<UserIdentifier, ResourceConsumption> userResourceConsumption,
       long time,
       boolean highWorkload,
       WorkerStatus workerStatus,
@@ -290,8 +289,6 @@ public class HAMasterMetaManager extends AbstractMetaManager {
                       .setFetchPort(fetchPort)
                       .setReplicatePort(replicatePort)
                       .putAllDisks(MetaUtil.toPbDiskInfos(disks))
-                      .putAllUserResourceConsumption(
-                          MetaUtil.toPbUserResourceConsumption(userResourceConsumption))
                       .setWorkerStatus(MetaUtil.toPbWorkerStatus(workerStatus))
                       .setTime(time)
                       .setHighWorkload(highWorkload)

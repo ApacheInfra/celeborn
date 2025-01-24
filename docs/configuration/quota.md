@@ -19,10 +19,18 @@ license: |
 <!--begin-include-->
 | Key | Default | isDynamic | Description | Since | Deprecated |
 | --- | ------- | --------- | ----------- | ----- | ---------- |
+| celeborn.quota.cluster.diskBytesWritten | 9223372036854775807b | true | Cluster level quota dynamic configuration for written disk bytes. | 0.6.0 |  | 
+| celeborn.quota.cluster.diskFileCount | 9223372036854775807b | true | Cluster level quota dynamic configuration for written disk file count. | 0.6.0 |  | 
+| celeborn.quota.cluster.hdfsBytesWritten | 9223372036854775807b | true | Cluster level quota dynamic configuration for written hdfs bytes. | 0.6.0 |  | 
+| celeborn.quota.cluster.hdfsFileCount | 9223372036854775807b | true | Cluster level quota dynamic configuration for written hdfs file count. | 0.6.0 |  | 
 | celeborn.quota.enabled | true | false | When Master side sets to true, the master will enable to check the quota via QuotaManager. When Client side sets to true, LifecycleManager will request Master side to check whether the current user has enough quota before registration of shuffle. Fallback to the default shuffle service when Master side checks that there is no enough quota for current user. | 0.2.0 |  | 
 | celeborn.quota.interruptShuffle.enabled | false | false | Whether to enable interrupt shuffle when quota exceeds. | 0.6.0 |  | 
-| celeborn.quota.tenant.diskBytesWritten | 9223372036854775807 | true | Quota dynamic configuration for written disk bytes. | 0.5.0 |  | 
-| celeborn.quota.tenant.diskFileCount | 9223372036854775807 | true | Quota dynamic configuration for written disk file count. | 0.5.0 |  | 
-| celeborn.quota.tenant.hdfsBytesWritten | 9223372036854775807 | true | Quota dynamic configuration for written hdfs bytes. | 0.5.0 |  | 
-| celeborn.quota.tenant.hdfsFileCount | 9223372036854775807 | true | Quota dynamic configuration for written hdfs file count. | 0.5.0 |  | 
+| celeborn.quota.tenant.diskBytesWritten | 9223372036854775807b | true | Tenant level quota dynamic configuration for written disk bytes. | 0.5.0 |  | 
+| celeborn.quota.tenant.diskFileCount | 9223372036854775807b | true | Tenant level quota dynamic configuration for written disk file count. | 0.5.0 |  | 
+| celeborn.quota.tenant.hdfsBytesWritten | 9223372036854775807b | true | Tenant level quota dynamic configuration for written hdfs bytes. | 0.5.0 |  | 
+| celeborn.quota.tenant.hdfsFileCount | 9223372036854775807b | true | Tenant level quota dynamic configuration for written hdfs file count. | 0.5.0 |  | 
+| celeborn.quota.user.diskBytesWritten | 9223372036854775807b | true | User level quota dynamic configuration for written disk bytes. | 0.6.0 |  | 
+| celeborn.quota.user.diskFileCount | 9223372036854775807b | true | User level quota dynamic configuration for written disk file count. | 0.6.0 |  | 
+| celeborn.quota.user.hdfsBytesWritten | 9223372036854775807b | true | User level quota dynamic configuration for written hdfs bytes. | 0.6.0 |  | 
+| celeborn.quota.user.hdfsFileCount | 9223372036854775807b | true | User level quota dynamic configuration for written hdfs file count. | 0.6.0 |  | 
 <!--end-include-->

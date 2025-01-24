@@ -250,13 +250,11 @@ public abstract class AbstractMetaManager implements IMetadataHandler {
       int fetchPort,
       int replicatePort,
       Map<String, DiskInfo> disks,
-      Map<UserIdentifier, ResourceConsumption> userResourceConsumption,
       long time,
       WorkerStatus workerStatus,
       boolean highWorkload) {
     WorkerInfo worker =
-        new WorkerInfo(
-            host, rpcPort, pushPort, fetchPort, replicatePort, -1, disks, userResourceConsumption);
+        new WorkerInfo(host, rpcPort, pushPort, fetchPort, replicatePort, -1, disks, null);
     AtomicLong availableSlots = new AtomicLong();
     LOG.debug("update worker {}:{} heartbeat {}", host, rpcPort, disks);
     synchronized (workersMap) {
@@ -264,7 +262,6 @@ public abstract class AbstractMetaManager implements IMetadataHandler {
       workerInfo.ifPresent(
           info -> {
             info.updateThenGetDiskInfos(disks, Option.apply(estimatedPartitionSize));
-            info.updateThenGetUserResourceConsumption(userResourceConsumption);
             availableSlots.set(info.totalAvailableSlots());
             info.lastHeartbeat_$eq(time);
             info.setWorkerStatus(workerStatus);
@@ -611,6 +608,21 @@ public abstract class AbstractMetaManager implements IMetadataHandler {
     for (String fallbackPolicy : fallbackCounts.keySet()) {
       shuffleFallbackCounts.compute(
           fallbackPolicy, (k, v) -> v == null ? fallbackCounts.get(k) : v + fallbackCounts.get(k));
+    }
+  }
+
+  public void updateWorkerResourceConsumptions(
+      String host,
+      int rpcPort,
+      int pushPort,
+      int fetchPort,
+      int replicatePort,
+      Map<UserIdentifier, ResourceConsumption> resourceConsumptions) {
+    WorkerInfo worker =
+        new WorkerInfo(host, rpcPort, pushPort, fetchPort, replicatePort, -1, null, null);
+    synchronized (workersMap) {
+      Optional<WorkerInfo> workerInfo = Optional.ofNullable(workersMap.get(worker.toUniqueId()));
+      workerInfo.ifPresent(info -> info.updateThenGetUserResourceConsumption(resourceConsumptions));
     }
   }
 }

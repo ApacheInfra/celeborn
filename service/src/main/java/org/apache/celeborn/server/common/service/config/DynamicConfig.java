@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.celeborn.common.CelebornConf;
 import org.apache.celeborn.common.internal.config.ConfigEntry;
-import org.apache.celeborn.common.quota.Quota;
+import org.apache.celeborn.common.quota.StorageQuota;
 import org.apache.celeborn.common.quota.UserTrafficQuota;
 import org.apache.celeborn.common.quota.WorkerTrafficQuota;
 import org.apache.celeborn.common.tags.WorkerTagsMeta;
@@ -44,7 +44,6 @@ import org.apache.celeborn.common.util.Utils;
 public abstract class DynamicConfig {
   private static final Logger LOG = LoggerFactory.getLogger(DynamicConfig.class);
   protected volatile Map<String, String> configs = new HashMap<>();
-  protected volatile Quota quota = null;
   protected volatile Map<String, Set<String>> tags = null;
 
   public abstract DynamicConfig getParentLevelConfig();
@@ -94,37 +93,26 @@ public abstract class DynamicConfig {
     return null;
   }
 
-  public Quota getQuota() {
-    if (quota == null) {
-      synchronized (DynamicConfig.class) {
-        if (quota == null) {
-          quota = currentQuota();
-        }
-      }
-    }
-    return quota;
-  }
-
-  protected Quota currentQuota() {
-    return new Quota(
+  public StorageQuota getTenantStorageQuota() {
+    return new StorageQuota(
         getValue(
-            CelebornConf.QUOTA_DISK_BYTES_WRITTEN().key(),
-            CelebornConf.QUOTA_DISK_BYTES_WRITTEN(),
+            CelebornConf.QUOTA_TENANT_DISK_BYTES_WRITTEN().key(),
+            CelebornConf.QUOTA_TENANT_DISK_BYTES_WRITTEN(),
             Long.TYPE,
             ConfigType.BYTES),
         getValue(
-            CelebornConf.QUOTA_DISK_FILE_COUNT().key(),
-            CelebornConf.QUOTA_DISK_FILE_COUNT(),
+            CelebornConf.QUOTA_TENANT_DISK_FILE_COUNT().key(),
+            CelebornConf.QUOTA_TENANT_DISK_FILE_COUNT(),
             Long.TYPE,
             ConfigType.STRING),
         getValue(
-            CelebornConf.QUOTA_HDFS_BYTES_WRITTEN().key(),
-            CelebornConf.QUOTA_HDFS_BYTES_WRITTEN(),
+            CelebornConf.QUOTA_TENANT_HDFS_BYTES_WRITTEN().key(),
+            CelebornConf.QUOTA_TENANT_HDFS_BYTES_WRITTEN(),
             Long.TYPE,
             ConfigType.BYTES),
         getValue(
-            CelebornConf.QUOTA_HDFS_FILE_COUNT().key(),
-            CelebornConf.QUOTA_HDFS_FILE_COUNT(),
+            CelebornConf.QUOTA_TENANT_HDFS_FILE_COUNT().key(),
+            CelebornConf.QUOTA_TENANT_HDFS_FILE_COUNT(),
             Long.TYPE,
             ConfigType.STRING));
   }
@@ -181,6 +169,62 @@ public abstract class DynamicConfig {
             ConfigType.STRING));
   }
 
+  public StorageQuota getClusterStorageQuota() {
+    return new StorageQuota(
+        getValue(
+            CelebornConf.QUOTA_CLUSTER_DISK_BYTES_WRITTEN().key(),
+            CelebornConf.QUOTA_CLUSTER_DISK_BYTES_WRITTEN(),
+            Long.TYPE,
+            ConfigType.BYTES),
+        getValue(
+            CelebornConf.QUOTA_CLUSTER_DISK_FILE_COUNT().key(),
+            CelebornConf.QUOTA_CLUSTER_DISK_FILE_COUNT(),
+            Long.TYPE,
+            ConfigType.STRING),
+        getValue(
+            CelebornConf.QUOTA_CLUSTER_HDFS_BYTES_WRITTEN().key(),
+            CelebornConf.QUOTA_CLUSTER_HDFS_BYTES_WRITTEN(),
+            Long.TYPE,
+            ConfigType.BYTES),
+        getValue(
+            CelebornConf.QUOTA_CLUSTER_HDFS_FILE_COUNT().key(),
+            CelebornConf.QUOTA_CLUSTER_HDFS_FILE_COUNT(),
+            Long.TYPE,
+            ConfigType.STRING));
+  }
+
+  public StorageQuota getUserStorageQuota() {
+    return new StorageQuota(
+        getValue(
+            CelebornConf.QUOTA_USER_DISK_BYTES_WRITTEN().key(),
+            CelebornConf.QUOTA_USER_DISK_BYTES_WRITTEN(),
+            Long.TYPE,
+            ConfigType.BYTES),
+        getValue(
+            CelebornConf.QUOTA_USER_DISK_FILE_COUNT().key(),
+            CelebornConf.QUOTA_USER_DISK_FILE_COUNT(),
+            Long.TYPE,
+            ConfigType.STRING),
+        getValue(
+            CelebornConf.QUOTA_USER_HDFS_BYTES_WRITTEN().key(),
+            CelebornConf.QUOTA_USER_HDFS_BYTES_WRITTEN(),
+            Long.TYPE,
+            ConfigType.BYTES),
+        getValue(
+            CelebornConf.QUOTA_USER_HDFS_FILE_COUNT().key(),
+            CelebornConf.QUOTA_USER_HDFS_FILE_COUNT(),
+            Long.TYPE,
+            ConfigType.STRING));
+  }
+
+  public boolean interruptShuffleEnabled() {
+    return getValue(
+        CelebornConf.QUOTA_INTERRUPT_SHUFFLE_ENABLED().key(),
+        CelebornConf.QUOTA_INTERRUPT_SHUFFLE_ENABLED(),
+        Boolean.TYPE,
+        ConfigType.BOOLEAN);
+  }
+
   public Map<String, String> getConfigs() {
     return configs;
   }
@@ -212,6 +256,7 @@ public abstract class DynamicConfig {
     BYTES,
     STRING,
     TIME_MS,
+    BOOLEAN
   }
 
   public static <T> T convert(Class<T> clazz, String value) {

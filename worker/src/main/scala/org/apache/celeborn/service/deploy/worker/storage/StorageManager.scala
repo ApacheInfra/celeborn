@@ -919,18 +919,15 @@ final private[worker] class StorageManager(conf: CelebornConf, workerSource: Abs
         }
         // userIdentifier -> List((userIdentifier, (applicationId, fileInfo))))
         .groupBy(_._1)
-        .map { case (userIdentifier, userWithFileInfoList) =>
+        .mapValues { userWithFileInfoList =>
           // collect resource consumed by each user on this worker
-          val userFileInfos = userWithFileInfoList.map(_._2)
-          (
-            userIdentifier,
-            resourceConsumption(
-              userFileInfos.map(_._2),
-              userFileInfos.groupBy(_._1).map {
-                case (applicationId, appWithFileInfoList) =>
-                  (applicationId, resourceConsumption(appWithFileInfoList.map(_._2)))
-              }.asJava))
-        }
+          val subResourceConsumption = userWithFileInfoList.map(_._2).groupBy(_._1).map {
+            case (applicationId, appWithFileInfoList) =>
+              (applicationId, resourceConsumption(appWithFileInfoList.map(_._2)))
+          }
+          subResourceConsumption.values.foldLeft(ResourceConsumption(0, 0, 0, 0))(_ add _)
+            .withSubResourceConsumptions(subResourceConsumption.asJava)
+        }.toMap
     }
   }
 

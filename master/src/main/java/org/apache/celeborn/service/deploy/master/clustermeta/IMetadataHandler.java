@@ -66,7 +66,6 @@ public interface IMetadataHandler {
       int fetchPort,
       int replicatePort,
       Map<String, DiskInfo> disks,
-      Map<UserIdentifier, ResourceConsumption> userResourceConsumption,
       long time,
       boolean highWorkload,
       WorkerStatus workerStatus,

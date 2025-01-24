@@ -227,7 +227,6 @@ public class MetaHandler {
               fetchPort,
               replicatePort,
               diskInfos,
-              userResourceConsumption,
               request.getWorkerHeartbeatRequest().getTime(),
               workerStatus,
               highWorkload);
