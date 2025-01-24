@@ -18,6 +18,7 @@
 package org.apache.celeborn.common.util
 
 import java.util
+import java.util.Collections
 
 import org.apache.celeborn.CelebornFunSuite
 import org.apache.celeborn.common.CelebornConf
@@ -144,7 +145,7 @@ class UtilsSuite extends CelebornFunSuite {
   }
 
   test("MapperEnd class convert with pb") {
-    val mapperEnd = MapperEnd(1, 1, 1, 2, 1)
+    val mapperEnd = MapperEnd(1, 1, 1, 2, 1, Collections.emptyMap())
     val mapperEndTrans =
       Utils.fromTransportMessage(Utils.toTransportMessage(mapperEnd)).asInstanceOf[MapperEnd]
     assert(mapperEnd == mapperEndTrans)

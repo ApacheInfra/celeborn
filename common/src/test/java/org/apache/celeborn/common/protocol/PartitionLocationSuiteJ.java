@@ -209,7 +209,7 @@ public class PartitionLocationSuiteJ {
             + "  host-rpcPort-pushPort-fetchPort-replicatePort:localhost-3-1-2-4\n"
             + "  mode:PRIMARY\n"
             + "  peer:(empty)\n"
-            + "  storage hint:StorageInfo{type=MEMORY, mountPoint='', finalResult=false, filePath=null}\n"
+            + "  storage hint:StorageInfo{type=MEMORY, mountPoint='', finalResult=false, filePath=null, fileSize=0, chunkOffsets=null}\n"
             + "  mapIdBitMap:{}]";
     String exp2 =
         "PartitionLocation[\n"
@@ -217,7 +217,7 @@ public class PartitionLocationSuiteJ {
             + "  host-rpcPort-pushPort-fetchPort-replicatePort:localhost-3-1-2-4\n"
             + "  mode:PRIMARY\n"
             + "  peer:(host-rpcPort-pushPort-fetchPort-replicatePort:localhost-3-1-2-4)\n"
-            + "  storage hint:StorageInfo{type=MEMORY, mountPoint='', finalResult=false, filePath=null}\n"
+            + "  storage hint:StorageInfo{type=MEMORY, mountPoint='', finalResult=false, filePath=null, fileSize=0, chunkOffsets=null}\n"
             + "  mapIdBitMap:{}]";
     String exp3 =
         "PartitionLocation[\n"
@@ -225,7 +225,8 @@ public class PartitionLocationSuiteJ {
             + "  host-rpcPort-pushPort-fetchPort-replicatePort:localhost-3-1-2-4\n"
             + "  mode:PRIMARY\n"
             + "  peer:(host-rpcPort-pushPort-fetchPort-replicatePort:localhost-3-1-2-4)\n"
-            + "  storage hint:StorageInfo{type=MEMORY, mountPoint='/mnt/disk/0', finalResult=false, filePath=null}\n"
+            + "  storage hint:StorageInfo{type=MEMORY, mountPoint='/mnt/disk/0', "
+            + "finalResult=false, filePath=null, fileSize=0, chunkOffsets=null}\n"
             + "  mapIdBitMap:{1,2,3}]";
     assertEquals(exp1, location1.toString());
     assertEquals(exp2, location2.toString());

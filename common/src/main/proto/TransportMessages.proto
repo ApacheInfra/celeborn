@@ -134,6 +134,8 @@ message PbStorageInfo {
   bool finalResult = 3;
   string filePath = 4;
   int32 availableStorageTypes = 5;
+  int64 fileSize = 6;
+  repeated int64 chunkOffsets = 7;
 }
 
 message PbPartitionLocation {
@@ -354,6 +356,17 @@ message PbMapperEnd {
   int32 attemptId = 3;
   int32 numMappers = 4;
   int32 partitionId = 5;
+  map<string, PbPushFailedBatchSet> pushFailureBatches= 6;
+}
+
+message PbPushFailedBatchSet {
+  repeated PbPushFailedBatch failureBatches = 1;
+}
+
+message PbPushFailedBatch {
+  int32 mapId = 1;
+  int32 attemptId = 2;
+  int32 batchId = 3;
 }
 
 message PbMapperEndResponse {
@@ -375,6 +388,8 @@ message PbGetReducerFileGroupResponse {
 
   // only map partition mode has succeed partitionIds
   repeated int32 partitionIds = 4;
+
+  map<string, PbPushFailedBatchSet> pushFailedBatches = 5;
 }
 
 message PbGetShuffleId {
@@ -850,6 +865,8 @@ message PbPackedPartitionLocations {
   repeated string filePaths = 10;
   repeated int32 availableStorageTypes = 11;
   repeated int32 modes = 12;
+  repeated int64 fileSizes = 13;
+  repeated PbChunkOffsets chunksOffsets = 14;
 }
 
 message PbPackedPartitionLocationsPair {
@@ -882,4 +899,8 @@ message PbReviseLostShufflesResponse{
 message PbPushMergedDataSplitPartitionInfo {
   repeated int32 splitPartitionIndexes = 1;
   repeated int32 statusCodes = 2;
+}
+
+message PbChunkOffsets {
+  repeated int64 chunkOffset = 1;
 }

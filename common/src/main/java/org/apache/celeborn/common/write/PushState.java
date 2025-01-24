@@ -18,9 +18,12 @@
 package org.apache.celeborn.common.write;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.collect.Sets;
 import org.apache.commons.lang3.tuple.Pair;
 
 import org.apache.celeborn.common.CelebornConf;
@@ -33,9 +36,12 @@ public class PushState {
   public AtomicReference<IOException> exception = new AtomicReference<>();
   private final InFlightRequestTracker inFlightRequestTracker;
 
+  private final Map<String, Set<PushFailedBatch>> failedBatchMap;
+
   public PushState(CelebornConf conf) {
     pushBufferMaxSize = conf.clientPushBufferMaxSize();
     inFlightRequestTracker = new InFlightRequestTracker(conf, this);
+    failedBatchMap = new ConcurrentHashMap<>();
   }
 
   public void cleanup() {
@@ -87,5 +93,15 @@ public class PushState {
 
   public int remainingAllowPushes(String hostAndPushPort) {
     return inFlightRequestTracker.remainingAllowPushes(hostAndPushPort);
+  }
+
+  public void addFailedBatch(String partitionId, PushFailedBatch failedBatch) {
+    this.failedBatchMap
+        .computeIfAbsent(partitionId, (s) -> Sets.newConcurrentHashSet())
+        .add(failedBatch);
+  }
+
+  public Map<String, Set<PushFailedBatch>> getFailedBatches() {
+    return this.failedBatchMap;
   }
 }

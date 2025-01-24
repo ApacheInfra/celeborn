@@ -17,12 +17,13 @@
 
 package org.apache.celeborn.tests.client
 
+import java.nio.charset.StandardCharsets
 import java.util
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
-import org.apache.celeborn.client.{LifecycleManager, WithShuffleClientSuite}
+import org.apache.celeborn.client.{LifecycleManager, ShuffleClientImpl, WithShuffleClientSuite}
 import org.apache.celeborn.client.LifecycleManager.ShuffleFailedWorkers
 import org.apache.celeborn.client.commit.CommitFilesParam
 import org.apache.celeborn.common.CelebornConf
@@ -225,6 +226,70 @@ class LifecycleManagerCommitFilesSuite extends WithShuffleClientSuite with MiniC
         }
       }
     }
+    lifecycleManager.stop()
+  }
+
+  test("CELEBORN-1319: test commit files and check commit info") {
+    val shuffleId = nextShuffleId
+    val conf = celebornConf.clone
+    conf.set(CelebornConf.TEST_MOCK_COMMIT_FILES_FAILURE.key, "false")
+    val lifecycleManager: LifecycleManager = new LifecycleManager(APP, conf)
+    val shuffleClient = new ShuffleClientImpl(APP, conf, userIdentifier)
+    shuffleClient.setupLifecycleManagerRef(lifecycleManager.self)
+
+    val ids = new util.ArrayList[Integer](3)
+    0 until 3 foreach {
+      ids.add(_)
+    }
+    val res = lifecycleManager.requestMasterRequestSlotsWithRetry(shuffleId, ids)
+    assert(res.status == StatusCode.SUCCESS)
+    assert(res.workerResource.keySet().size() == 3)
+
+    lifecycleManager.setupEndpoints(
+      res.workerResource.keySet,
+      shuffleId,
+      new ShuffleFailedWorkers())
+
+    lifecycleManager.reserveSlotsWithRetry(
+      shuffleId,
+      new util.HashSet(res.workerResource.keySet()),
+      res.workerResource,
+      updateEpoch = false)
+
+    lifecycleManager.commitManager.registerShuffle(shuffleId, 1, false)
+
+    val buffer = "hello world".getBytes(StandardCharsets.UTF_8)
+
+    var bufferLength = -1
+
+    0 until 3 foreach { partitionId =>
+      bufferLength =
+        shuffleClient.pushData(shuffleId, 0, 0, partitionId, buffer, 0, buffer.length, 1, 3)
+      lifecycleManager.commitManager.finishMapperAttempt(shuffleId, 0, 0, 1, partitionId)
+    }
+
+    val commitHandler = lifecycleManager.commitManager.getCommitHandler(shuffleId)
+    val params = new ArrayBuffer[CommitFilesParam](res.workerResource.size())
+    res.workerResource.asScala.foreach { case (workerInfo, (primaryIds, replicaIds)) =>
+      params += CommitFilesParam(
+        workerInfo,
+        primaryIds.asScala.map(_.getUniqueId).toList.asJava,
+        replicaIds.asScala.map(_.getUniqueId).toList.asJava)
+    }
+
+    val shuffleCommittedInfo = lifecycleManager.commitManager.committedPartitionInfo.get(shuffleId)
+    commitHandler.doParallelCommitFiles(
+      shuffleId,
+      shuffleCommittedInfo,
+      params,
+      new ShuffleFailedWorkers)
+
+    shuffleCommittedInfo.committedReplicaStorageInfos.values().asScala.foreach { storageInfo =>
+      assert(storageInfo.fileSize == bufferLength)
+      // chunkOffsets contains 0 by default, and bufferFlushOffset
+      assert(storageInfo.chunkOffsets.size() == 2)
+    }
+
     lifecycleManager.stop()
   }
 

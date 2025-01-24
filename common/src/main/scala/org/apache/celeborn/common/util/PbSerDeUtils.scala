@@ -32,6 +32,7 @@ import org.apache.celeborn.common.protocol.PartitionLocation.Mode
 import org.apache.celeborn.common.protocol.message.ControlMessages.WorkerResource
 import org.apache.celeborn.common.quota.ResourceConsumption
 import org.apache.celeborn.common.util.{CollectionUtils => localCollectionUtils}
+import org.apache.celeborn.common.write.PushFailedBatch
 
 object PbSerDeUtils {
 
@@ -524,6 +525,14 @@ object PbSerDeUtils {
       pbPackedLocationsBuilder.addFilePaths("")
     }
     pbPackedLocationsBuilder.addAvailableStorageTypes(location.getStorageInfo.availableStorageTypes)
+    pbPackedLocationsBuilder.addFileSizes(location.getStorageInfo.getFileSize)
+    val chunkOffsets = PbChunkOffsets.newBuilder()
+    if (null != location.getStorageInfo.chunkOffsets && !location.getStorageInfo.chunkOffsets.isEmpty) {
+      chunkOffsets.addAllChunkOffset(location.getStorageInfo.chunkOffsets).build()
+      pbPackedLocationsBuilder.addChunksOffsets(chunkOffsets)
+    } else {
+      pbPackedLocationsBuilder.addChunksOffsets(chunkOffsets.build())
+    }
     pbPackedLocationsBuilder.addModes(location.getMode.mode())
   }
 
@@ -640,7 +649,9 @@ object PbSerDeUtils {
           pbPackedPartitionLocations.getMountPoints(index)),
         pbPackedPartitionLocations.getFinalResult(index),
         filePath,
-        pbPackedPartitionLocations.getAvailableStorageTypes(index)),
+        pbPackedPartitionLocations.getAvailableStorageTypes(index),
+        pbPackedPartitionLocations.getFileSizes(index),
+        pbPackedPartitionLocations.getChunksOffsets(index).getChunkOffsetList),
       Utils.byteStringToRoaringBitmap(pbPackedPartitionLocations.getMapIdBitMap(index)))
   }
 
@@ -670,4 +681,34 @@ object PbSerDeUtils {
     }.asJava
   }
 
+  def toPbPushFailedBatch(pushFailedBatch: PushFailedBatch): PbPushFailedBatch = {
+    PbPushFailedBatch.newBuilder()
+      .setMapId(pushFailedBatch.getMapId)
+      .setAttemptId(pushFailedBatch.getAttemptId)
+      .setBatchId(pushFailedBatch.getBatchId)
+      .build()
+  }
+
+  def fromPbPushFailedBatch(pbPushFailedBatch: PbPushFailedBatch): PushFailedBatch = {
+    new PushFailedBatch(
+      pbPushFailedBatch.getMapId,
+      pbPushFailedBatch.getAttemptId,
+      pbPushFailedBatch.getBatchId)
+  }
+
+  def toPbPushFailedBatchSet(failedBatchSet: util.Set[PushFailedBatch]): PbPushFailedBatchSet = {
+    val builder = PbPushFailedBatchSet.newBuilder()
+    failedBatchSet.asScala.foreach(batch => builder.addFailureBatches(toPbPushFailedBatch(batch)))
+
+    builder.build()
+  }
+
+  def fromPbPushFailedBatchSet(pbFailedBatchSet: PbPushFailedBatchSet)
+      : util.Set[PushFailedBatch] = {
+    val failedBatchSet = new util.HashSet[PushFailedBatch]()
+    pbFailedBatchSet.getFailureBatchesList.asScala.foreach(batch =>
+      failedBatchSet.add(fromPbPushFailedBatch(batch)))
+
+    failedBatchSet
+  }
 }

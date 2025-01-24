@@ -17,6 +17,8 @@
 
 package org.apache.celeborn.client
 
+import org.apache.celeborn.common.CelebornConf
+
 object ClientUtils {
 
   /**
@@ -36,5 +38,21 @@ object ClientUtils {
       i -= 1
     }
     true
+  }
+
+  /**
+   * If startMapIndex > endMapIndex, means partition is skew partition.
+   * locations will split to sub-partitions with startMapIndex size.
+   *
+   * @param conf cleborn conf
+   * @param startMapIndex shuffle start map index
+   * @param endMapIndex shuffle end map index
+   * @return true if read skew partition without map range
+   */
+  def readSkewPartitionWithoutMapRange(
+      conf: CelebornConf,
+      startMapIndex: Int,
+      endMapIndex: Int): Boolean = {
+    conf.clientAdaptiveOptimizeSkewedPartitionReadEnabled && startMapIndex > endMapIndex
   }
 }

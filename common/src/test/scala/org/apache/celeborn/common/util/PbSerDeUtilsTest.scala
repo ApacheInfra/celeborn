@@ -24,6 +24,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.util.Random
 
+import com.google.common.collect.{Lists, Sets}
 import org.apache.hadoop.shaded.org.apache.commons.lang3.RandomStringUtils
 
 import org.apache.celeborn.CelebornFunSuite
@@ -35,6 +36,7 @@ import org.apache.celeborn.common.protocol.message.{ControlMessages, StatusCode}
 import org.apache.celeborn.common.protocol.message.ControlMessages.{GetReducerFileGroupResponse, WorkerResource}
 import org.apache.celeborn.common.quota.ResourceConsumption
 import org.apache.celeborn.common.util.PbSerDeUtils.{fromPbPackedPartitionLocationsPair, toPbPackedPartitionLocationsPair}
+import org.apache.celeborn.common.write.PushFailedBatch
 
 class PbSerDeUtilsTest extends CelebornFunSuite {
 
@@ -171,6 +173,37 @@ class PbSerDeUtilsTest extends CelebornFunSuite {
       28,
       27,
       PartitionLocation.Mode.PRIMARY)
+
+  val partitionLocation5 =
+    new PartitionLocation(
+      4,
+      4,
+      "host5",
+      50,
+      49,
+      48,
+      47,
+      PartitionLocation.Mode.PRIMARY)
+  val partitionLocation6 =
+    new PartitionLocation(
+      5,
+      5,
+      "host6",
+      60,
+      59,
+      58,
+      57,
+      PartitionLocation.Mode.REPLICA,
+      null,
+      new StorageInfo(
+        StorageInfo.Type.HDD,
+        "",
+        false,
+        null,
+        StorageInfo.LOCAL_DISK_MASK,
+        5,
+        null),
+      null)
 
   val workerResource = new WorkerResource()
   workerResource.put(
@@ -369,6 +402,70 @@ class PbSerDeUtilsTest extends CelebornFunSuite {
     assert(partitionLocation3 == loc1)
   }
 
+  test("testPackedPartitionLocationPairCase3") {
+    partitionLocation5.setStorageInfo(new StorageInfo(
+      StorageInfo.Type.HDD,
+      "",
+      false,
+      null,
+      StorageInfo.LOCAL_DISK_MASK,
+      5,
+      Lists.newArrayList(0, 5, 10)))
+    partitionLocation5.setPeer(partitionLocation6)
+    val pairPb = PbSerDeUtils.toPbPackedPartitionLocationsPair(
+      List(partitionLocation5, partitionLocation6))
+    val rePb = PbSerDeUtils.fromPbPackedPartitionLocationsPair(pairPb)
+
+    val loc1 = rePb._1.get(0)
+    val loc2 = rePb._2.get(0)
+
+    assert(partitionLocation5 == loc1)
+    assert(partitionLocation6 == loc2)
+    assert(loc1.getStorageInfo.getFileSize == partitionLocation5.getStorageInfo.getFileSize)
+    assert(loc1.getStorageInfo.getChunkOffsets == partitionLocation5.getStorageInfo.getChunkOffsets)
+
+    assert(loc2.getStorageInfo.getFileSize == partitionLocation6.getStorageInfo.getFileSize)
+    assert(loc2.getStorageInfo.getChunkOffsets.isEmpty)
+  }
+
+  test("testPackedPartitionLocationPairCase4") {
+    partitionLocation5.setStorageInfo(new StorageInfo(
+      StorageInfo.Type.HDD,
+      "",
+      false,
+      null,
+      StorageInfo.LOCAL_DISK_MASK,
+      5,
+      null))
+    val pairPb = PbSerDeUtils.toPbPackedPartitionLocationsPair(
+      List(partitionLocation5))
+    val rePb = PbSerDeUtils.fromPbPackedPartitionLocationsPair(pairPb)
+
+    val loc1 = rePb._1.get(0)
+
+    assert(partitionLocation5 == loc1)
+    assert(loc1.getStorageInfo.getFileSize == partitionLocation5.getStorageInfo.getFileSize)
+    assert(loc1.getStorageInfo.getChunkOffsets.isEmpty)
+  }
+
+  test("testPackedPartitionLocationPairCase5") {
+    partitionLocation5.setStorageInfo(new StorageInfo(
+      StorageInfo.Type.HDD,
+      "",
+      false,
+      null,
+      StorageInfo.LOCAL_DISK_MASK))
+    val pairPb = PbSerDeUtils.toPbPackedPartitionLocationsPair(
+      List(partitionLocation5))
+    val rePb = PbSerDeUtils.fromPbPackedPartitionLocationsPair(pairPb)
+
+    val loc1 = rePb._1.get(0)
+
+    assert(partitionLocation5 == loc1)
+    assert(loc1.getStorageInfo.getFileSize == partitionLocation5.getStorageInfo.getFileSize)
+    assert(loc1.getStorageInfo.getChunkOffsets.isEmpty)
+  }
+
   test("testPackedPartitionLocationPairIPv6") {
     val pairPb = PbSerDeUtils.toPbPackedPartitionLocationsPair(
       List(partitionLocationIPv6))
@@ -565,4 +662,21 @@ class PbSerDeUtilsTest extends CelebornFunSuite {
     locations.asScala.foreach(p => uniqueIds.remove(p.getUniqueId))
     assert(uniqueIds.isEmpty)
   }
+
+  test("fromAndToPushFailedBatch") {
+    val failedBatch = new PushFailedBatch(1, 1, 2)
+    val pbPushFailedBatch = PbSerDeUtils.toPbPushFailedBatch(failedBatch)
+    val restoredFailedBatch = PbSerDeUtils.fromPbPushFailedBatch(pbPushFailedBatch)
+
+    assert(restoredFailedBatch.equals(failedBatch))
+  }
+
+  test("fromAndToPushFailedBatchSet") {
+    val failedBatchSet = Sets.newHashSet(new PushFailedBatch(1, 1, 2), new PushFailedBatch(2, 2, 3))
+    val pbPushFailedBatchSet = PbSerDeUtils.toPbPushFailedBatchSet(failedBatchSet)
+    val restoredFailedBatchSet = PbSerDeUtils.fromPbPushFailedBatchSet(pbPushFailedBatchSet)
+
+    assert(restoredFailedBatchSet.equals(failedBatchSet))
+  }
+
 }
